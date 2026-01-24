@@ -1,44 +1,46 @@
-name: Update M3U and API
+name: Update IPTV Upstream
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */4 * * *"   # 每 4 小时执行一次（UTC）
-
-permissions:
-  contents: write   # ⭐ 关键：允许 github-actions 推送代码
+    - cron: "0 */4 * * *"   # 每 4 小时
 
 jobs:
-  build:
+  update:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
           node-version: 18
 
       - name: Fetch upstream interface.txt
         run: |
-          curl -fsSL https://develop202.github.io/migu_video/interface.txt -o raw_interface.txt
+          curl -fsSL https://develop202.github.io/migu_video/interface.txt -o upstream.txt
 
-      - name: Parse to M3U and API
+      - name: Compare with existing
         run: |
-          node parse-to-m3u.js
+          if [ -f raw_interface.txt ]; then
+            diff upstream.txt raw_interface.txt >/dev/null && echo "NO_CHANGE=true" >> $GITHUB_ENV
+          fi
 
-      - name: Commit & Push if changed
+      - name: Update raw_interface.txt
+        if: env.NO_CHANGE != 'true'
+        run: mv upstream.txt raw_interface.txt
+
+      - name: Generate M3U & API
+        if: env.NO_CHANGE != 'true'
+        run: node parse.js
+
+      - name: Commit & Push
+        if: env.NO_CHANGE != 'true'
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-
-          git add cleaned_interface.m3u api.txt
-
-          if git diff --cached --quiet; then
-            echo "No changes, skip commit"
-          else
-            git commit -m "Update m3u & api (auto)"
-            git push
-          fi
+          git add raw_interface.txt cleaned_interface.m3u api.txt
+          git commit -m "sync: upstream update"
+          git push
