@@ -1,40 +1,35 @@
-name: Parse remote interface.txt to M3U
+name: Update M3U and API
 
-# 定时 + 手动触发
 on:
-  schedule:
-    - cron: "*/10 * * * *"  # 每10分钟刷新一次
   workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"   # 每10分钟更新一次
 
 jobs:
-  generate-m3u:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout 仓库
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
-      # 2️⃣ 安装 Node.js
-      - uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      # 3️⃣ 下载远程 interface.txt
-      - name: Fetch remote M3U
+      - name: Fetch remote interface.txt
         run: |
-          curl -sL "https://develop202.github.io/migu_video/interface.txt" -o raw_interface.txt
-          echo "✅ Downloaded remote interface.txt"
+          curl -sL https://develop202.github.io/migu_video/interface.txt -o raw_interface.txt
 
-      # 4️⃣ 解析生成 cleaned_interface.m3u
-      - name: Generate cleaned M3U
+      - name: Parse to M3U and API
         run: |
           node parse-to-m3u.js
 
-      # 5️⃣ 提交生成的 M3U
-      - name: Commit cleaned M3U
+      - name: Commit files
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add cleaned_interface.m3u
-          git diff --cached --quiet || git commit -m "Update cleaned_interface.m3u"
+          git add cleaned_interface.m3u api.txt
+          git diff --cached --quiet || git commit -m "Update m3u and api"
           git push
