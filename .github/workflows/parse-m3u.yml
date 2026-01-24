@@ -3,7 +3,7 @@ name: Update IPTV Upstream
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */4 * * *"   # 每 4 小时
+    - cron: "0 22,10 * * *"   # 每天10点22点自动更新
 
 jobs:
   update:
