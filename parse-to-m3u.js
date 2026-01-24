@@ -1,28 +1,39 @@
 const fs = require('fs');
 
-// 读取下载的远程 M3U
-const lines = fs.readFileSync('raw_interface.txt', 'utf-8').split(/\r?\n/);
+// 读取远程下载的源
+const text = fs.readFileSync('raw_interface.txt', 'utf-8');
+const lines = text.split(/\r?\n/);
 
-let output = ['#EXTM3U'];
-let currentInfo = null;
+let m3u = ['#EXTM3U'];
+let apiTxt = [];
+
+let currentName = '';
 
 for (let line of lines) {
   line = line.trim();
   if (!line) continue;
 
+  // 频道信息
   if (line.startsWith('#EXTINF')) {
-    // 保存当前频道信息
-    currentInfo = line;
-  } else if (line.startsWith('http')) {
-    if (currentInfo) {
-      // 输出 EXTINF + URL
-      output.push(currentInfo);
-      output.push(line);
-      currentInfo = null;
-    }
+    const parts = line.split(',');
+    currentName = parts.length > 1 ? parts.pop().trim() : '';
+  }
+
+  // 播放地址
+  else if (line.startsWith('http')) {
+    // M3U
+    m3u.push(`#EXTINF:-1,${currentName}`);
+    m3u.push(line);
+
+    // API（纯地址）
+    apiTxt.push(line);
+
+    currentName = '';
   }
 }
 
-// 写出整理后的 M3U
-fs.writeFileSync('cleaned_interface.m3u', output.join('\n') + '\n', 'utf-8');
-console.log('✅ cleaned_interface.m3u generated');
+// 写文件
+fs.writeFileSync('cleaned_interface.m3u', m3u.join('\n') + '\n', 'utf-8');
+fs.writeFileSync('api.txt', apiTxt.join('\n') + '\n', 'utf-8');
+
+console.log('cleaned_interface.m3u & api.txt generated');
