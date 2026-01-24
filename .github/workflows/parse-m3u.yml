@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: 'npm'
+          # cache: 'npm'
           cache-dependency-path: 'package-lock.json'   # 如果你有 package-lock.json，强烈建议加这一行
 
       - name: Install dependencies
