@@ -3,7 +3,7 @@ name: Update M3U and API
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/10 * * * *"   # 每10分钟更新一次
+    - cron: "0 */4 * * * *"   # 每4小时更新一次
 
 jobs:
   build:
