@@ -3,27 +3,42 @@ name: Update IPTV Upstream
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 10,22 * * *"   # 每天 UTC 10:00 和 22:00
+    - cron: "0 10,22 * * *"   # 每天 UTC 10:00 和 22:00（对应日本时间 19:00 和 07:00）
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 必须声明写权限才能 push
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4   # 建议升级到 v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # 需要完整历史来正确 commit
+          fetch-depth: 0   # 需要完整历史记录才能正确 commit & push
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4   # 也建议升级
+        uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
+          cache-dependency-path: 'package-lock.json'   # 如果你有 package-lock.json，强烈建议加这一行
+
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then
+            npm ci || npm install
+          else
+            echo "No package.json found, skipping npm install"
+          fi
 
       - name: Fetch upstream interface.txt
         run: |
-          curl -fsSL https://develop202.github.io/migu_video/interface.txt -o upstream.txt
+          curl -fsSL https://develop202.github.io/migu_video/interface.txt -o upstream.txt || {
+            echo "Failed to download upstream interface.txt"
+            exit 1
+          }
+          echo "Downloaded upstream.txt, size: $(stat -c%s upstream.txt) bytes"
 
       - name: Compare with existing raw_interface.txt
         id: compare
@@ -36,21 +51,42 @@ jobs:
             echo "Files differ or raw_interface.txt missing → will update"
           fi
 
-      - name: Update raw_interface.txt
+      - name: Update raw_interface.txt (if changed)
         if: env.NO_CHANGE != 'true'
-        run: mv upstream.txt raw_interface.txt
+        run: |
+          mv upstream.txt raw_interface.txt
+          echo "Updated raw_interface.txt from upstream"
 
-      - name: Generate M3U & API
+      - name: Generate M3U & API files
         if: env.NO_CHANGE != 'true'
-        run: node parse.js
+        run: |
+          echo "Running parse.js..."
+          node parse.js || {
+            echo "parse.js failed!"
+            exit 1
+          }
+          echo "Generated files:"
+          ls -lh cleaned_interface.m3u api.txt 2>/dev/null || echo "Output files not found"
 
-      - name: Commit & Push changes
+      - name: Commit & Push changes (if any)
         if: env.NO_CHANGE != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
           git add raw_interface.txt cleaned_interface.m3u api.txt
-          git commit -m "chore: sync upstream interface.txt $(date +'%Y-%m-%d %H:%M')"
-          git push
+          
+          # 只在有实际变化时 commit
+          git diff --cached --quiet || {
+            git commit -m "chore: sync upstream interface.txt $(date +'%Y-%m-%d %H:%M UTC')"
+            git push
+            echo "Changes committed and pushed"
+          } || echo "No changes to commit after generation"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Show final status
+        run: |
+          echo "Workflow completed."
+          echo "NO_CHANGE: ${NO_CHANGE:-false}"
+          echo "Files generated: $(ls cleaned_interface.m3u api.txt 2>/dev/null || echo 'none')"
