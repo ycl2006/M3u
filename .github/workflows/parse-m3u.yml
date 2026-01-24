@@ -3,7 +3,7 @@ name: Update IPTV Upstream
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 22,10 * * *"   # 每天10点22点自动更新
+    - cron: "0 10,22 * * *"   # 每天 UTC 10:00 和 22:00
 
 jobs:
   update:
@@ -11,21 +11,29 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4   # 建议升级到 v4
+        with:
+          fetch-depth: 0   # 需要完整历史来正确 commit
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4   # 也建议升级
         with:
           node-version: 18
+          cache: 'npm'
 
       - name: Fetch upstream interface.txt
         run: |
           curl -fsSL https://develop202.github.io/migu_video/interface.txt -o upstream.txt
 
-      - name: Compare with existing
+      - name: Compare with existing raw_interface.txt
+        id: compare
         run: |
-          if [ -f raw_interface.txt ]; then
-            diff upstream.txt raw_interface.txt >/dev/null && echo "NO_CHANGE=true" >> $GITHUB_ENV
+          if [ -f raw_interface.txt ] && [ -f upstream.txt ] && cmp -s upstream.txt raw_interface.txt; then
+            echo "NO_CHANGE=true" >> "$GITHUB_ENV"
+            echo "Files are identical → skipping update steps"
+          else
+            echo "NO_CHANGE=false" >> "$GITHUB_ENV"
+            echo "Files differ or raw_interface.txt missing → will update"
           fi
 
       - name: Update raw_interface.txt
@@ -36,11 +44,13 @@ jobs:
         if: env.NO_CHANGE != 'true'
         run: node parse.js
 
-      - name: Commit & Push
+      - name: Commit & Push changes
         if: env.NO_CHANGE != 'true'
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add raw_interface.txt cleaned_interface.m3u api.txt
-          git commit -m "sync: upstream update"
+          git commit -m "chore: sync upstream interface.txt $(date +'%Y-%m-%d %H:%M')"
           git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
