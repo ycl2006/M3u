@@ -3,33 +3,42 @@ name: Update M3U and API
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"   # 每6小时更新一次
+    - cron: "0 */4 * * *"   # 每 4 小时执行一次（UTC）
+
+permissions:
+  contents: write   # ⭐ 关键：允许 github-actions 推送代码
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Fetch remote interface.txt
+      - name: Fetch upstream interface.txt
         run: |
-          curl -sL https://develop202.github.io/migu_video/interface.txt -o raw_interface.txt
+          curl -fsSL https://develop202.github.io/migu_video/interface.txt -o raw_interface.txt
 
       - name: Parse to M3U and API
         run: |
           node parse-to-m3u.js
 
-      - name: Commit files
+      - name: Commit & Push if changed
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+
           git add cleaned_interface.m3u api.txt
-          git diff --cached --quiet || git commit -m "Update m3u and api"
-          git push
+
+          if git diff --cached --quiet; then
+            echo "No changes, skip commit"
+          else
+            git commit -m "Update m3u & api (auto)"
+            git push
+          fi
