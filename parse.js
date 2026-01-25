@@ -5,11 +5,10 @@ const { URL } = require('url');
 
 // ================= 配置 =================
 const CONF_FILE = 'upstream.conf';
-const RAW_OUTPUT = 'raw_interface.txt';
-const M3U_OUTPUT = 'cleaned_interface.m3u';
-const API_OUTPUT = 'api.txt';
+const M3U_OUTPUT = 'result.m3u';
+const TXT_OUTPUT = 'result.txt';
 
-// ================= 工具函数 =================
+// ================= 下载函数 =================
 function fetchUrl(url) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
@@ -35,7 +34,7 @@ function fetchUrl(url) {
   });
 }
 
-// 北京时间
+// ================= 北京时间 =================
 function beijingTime() {
   return new Date(Date.now() + 8 * 3600 * 1000)
     .toISOString()
@@ -78,7 +77,7 @@ function getGroup(name) {
     process.exit(1);
   }
 
-  // group -> channelName -> { urls:Set, sources:Set }
+  // group -> channel -> Set<url>
   const groups = new Map();
 
   for (const upstream of upstreams) {
@@ -110,13 +109,9 @@ function getGroup(name) {
         if (!groups.has(group)) groups.set(group, new Map());
 
         const chMap = groups.get(group);
-        if (!chMap.has(currentName)) {
-          chMap.set(currentName, { urls: new Set(), sources: new Set() });
-        }
+        if (!chMap.has(currentName)) chMap.set(currentName, new Set());
 
-        const ch = chMap.get(currentName);
-        ch.urls.add(line);
-        ch.sources.add(upstream);
+        chMap.get(currentName).add(line);
         currentName = '';
       }
     }
@@ -128,7 +123,7 @@ function getGroup(name) {
     `# Generated at ${beijingTime()}`,
     ''
   ];
-  const apiTxt = [];
+  const txt = [];
 
   for (const [group, channels] of groups) {
     const names = Array.from(channels.keys()).sort((a, b) =>
@@ -136,17 +131,18 @@ function getGroup(name) {
     );
 
     for (const name of names) {
-      const { urls } = channels.get(name);
-      for (const url of urls) {
+      for (const url of channels.get(name)) {
         m3u.push(`#EXTINF:-1 group-title="${group}",${name}`);
         m3u.push(url);
-        apiTxt.push(`${name},${url}`);
+        txt.push(`${name},${url}`);
       }
     }
   }
 
   fs.writeFileSync(M3U_OUTPUT, m3u.join('\n') + '\n', 'utf-8');
-  fs.writeFileSync(API_OUTPUT, apiTxt.join('\n') + '\n', 'utf-8');
+  fs.writeFileSync(TXT_OUTPUT, txt.join('\n') + '\n', 'utf-8');
 
   console.log('Done.');
+  console.log(`→ ${M3U_OUTPUT}`);
+  console.log(`→ ${TXT_OUTPUT}`);
 })();
