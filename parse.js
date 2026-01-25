@@ -55,13 +55,15 @@ function matchChannel(name) {
   for (const [group, patterns] of Object.entries(channelRules)) {
     for (const pattern of patterns) {
       try {
-        if (new RegExp(pattern, 'i').test(name)) return group;
+        if (new RegExp(pattern, 'i').test(name)) {
+          return group;  // CCTV/卫视/地方台 都直接返回键名
+        }
       } catch (e) {
         continue;
       }
     }
   }
-  // 默认分组
+  // 默认分类
   if (/^CCTV/.test(name)) return 'CCTV';
   if (/卫视/.test(name)) return '卫视';
   return '地方台';
@@ -120,17 +122,15 @@ function matchChannel(name) {
 
     const name = line.slice(0, idx).trim();
     const url = line.slice(idx + 1).trim();
-    const group = matchChannel(name);
 
-    if (!data[group]) data[group] = { order: [], channels: {} };
-    if (!data[group].channels[name]) {
-      data[group].channels[name] = new Set();
-      data[group].order.push(name);
+    if (!data[currentGroup].channels[name]) {
+      data[currentGroup].channels[name] = new Set();
+      data[currentGroup].order.push(name);
     }
-    data[group].channels[name].add(url);
+    data[currentGroup].channels[name].add(url);
   }
 
-  // ===== 2. 解析扩展源 M3U =====
+  // ===== 2. 解析补充源 M3U，只填充已有频道 =====
   for (const url of extUrls) {
     console.log('Fetching EXT:', url);
     let text;
@@ -153,13 +153,24 @@ function matchChannel(name) {
       }
 
       if ((line.startsWith('http://') || line.startsWith('https://')) && currentName) {
-        const group = matchChannel(currentName);
-        if (!data[group]) data[group] = { order: [], channels: {} };
-        if (!data[group].channels[currentName]) {
-          data[group].channels[currentName] = new Set();
-          data[group].order.push(currentName);
+        let found = false;
+        for (const group of Object.keys(data)) {
+          if (data[group].channels[currentName]) {
+            data[group].channels[currentName].add(line);
+            found = true;
+            break;
+          }
         }
-        data[group].channels[currentName].add(line);
+        // 不存在的频道可以忽略或放到 "其他" 组
+        if (!found) {
+          if (!data['其他']) data['其他'] = { order: [], channels: {} };
+          if (!data['其他'].channels[currentName]) {
+            data['其他'].channels[currentName] = new Set();
+            data['其他'].order.push(currentName);
+          }
+          data['其他'].channels[currentName].add(line);
+        }
+
         currentName = '';
       }
     }
