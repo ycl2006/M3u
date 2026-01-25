@@ -1,148 +1,100 @@
 const fs = require('fs');
-const https = require('https');
-const http = require('http');
-const { URL } = require('url');
 
 // ================= 配置 =================
-const CONF_FILE = 'upstream.conf';
-const M3U_OUTPUT = 'result.m3u';
-const TXT_OUTPUT = 'result.txt';
+const INPUT_FILE = process.argv[2] || 'upstream_merged.txt';
+const OUTPUT_M3U = 'result.m3u';
+const OUTPUT_TXT = 'result.txt';
 
-// ================= 下载函数 =================
-function fetchUrl(url) {
-  return new Promise((resolve, reject) => {
-    const u = new URL(url);
-    const lib = u.protocol === 'https:' ? https : http;
-
-    const req = lib.get(url, { timeout: 15000 }, res => {
-      if (res.statusCode !== 200) {
-        reject(new Error(`HTTP ${res.statusCode}`));
-        res.resume();
-        return;
-      }
-      let data = '';
-      res.setEncoding('utf8');
-      res.on('data', c => (data += c));
-      res.on('end', () => resolve(data));
-    });
-
-    req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Timeout'));
-    });
-  });
-}
-
-// ================= 北京时间 =================
+// ================= 工具函数 =================
 function beijingTime() {
-  return new Date(Date.now() + 8 * 3600 * 1000)
-    .toISOString()
-    .replace('T', ' ')
-    .replace('Z', ' +08:00');
+  const d = new Date(Date.now() + 8 * 3600 * 1000);
+  return d.toISOString().replace('T', ' ').replace('Z', ' CST');
 }
 
-// ================= 分组规则 =================
 function getGroup(name) {
-  if (/^CCTV|中国教育|CGTN/i.test(name)) return '央视';
+  if (/^CCTV\d+|CCTV-?\d+|CCTV/.test(name)) return 'CCTV';
   if (/卫视/.test(name)) return '卫视';
-
-  if (
-    /(北京|上海|广东|深圳|江苏|浙江|山东|河南|湖北|湖南|四川|重庆|安徽|福建|江西|广西|云南|贵州|陕西|山西|河北|辽宁|吉林|黑龙江|内蒙古|宁夏|青海|新疆|西藏|海南|甘肃|天津)/.test(
-      name
-    ) ||
-    /(都市|生活|新闻|公共|影视|综艺|经济|法治|少儿)/.test(name)
-  ) {
-    return '地方台';
-  }
-
-  return '其它';
+  return '地方台';
 }
 
-// ================= 主逻辑 =================
-(async () => {
-  if (!fs.existsSync(CONF_FILE)) {
-    console.error('upstream.conf not found');
-    process.exit(1);
+// ================= 读取文件 =================
+if (!fs.existsSync(INPUT_FILE)) {
+  console.error(`Input file not found: ${INPUT_FILE}`);
+  process.exit(1);
+}
+
+const lines = fs.readFileSync(INPUT_FILE, 'utf-8').split(/\r?\n/);
+
+// ================= 解析 =================
+const groups = {
+  CCTV: [],
+  卫视: [],
+  地方台: []
+};
+
+const seen = new Set();
+
+let currentName = '';
+
+for (let line of lines) {
+  line = line.trim();
+  if (!line) continue;
+
+  if (line.startsWith('#EXTINF')) {
+    const idx = line.lastIndexOf(',');
+    currentName = idx !== -1 ? line.slice(idx + 1).trim() : '';
+    continue;
   }
 
-  const upstreams = fs
-    .readFileSync(CONF_FILE, 'utf-8')
-    .split(/\r?\n/)
-    .map(l => l.replace(/#.*/, '').trim())
-    .filter(Boolean);
-
-  if (upstreams.length === 0) {
-    console.error('No upstream URLs');
-    process.exit(1);
-  }
-
-  // group -> channel -> Set<url>
-  const groups = new Map();
-
-  for (const upstream of upstreams) {
-    console.log(`Fetching: ${upstream}`);
-    let text;
-    try {
-      text = await fetchUrl(upstream);
-    } catch (e) {
-      console.warn(`  ✖ failed: ${e.message}`);
+  if ((line.startsWith('http://') || line.startsWith('https://')) && currentName) {
+    const key = currentName + '|' + line;
+    if (seen.has(key)) {
+      currentName = '';
       continue;
     }
+    seen.add(key);
 
-    let currentName = '';
-    for (let line of text.split(/\r?\n/)) {
-      line = line.trim();
-      if (!line) continue;
+    const group = getGroup(currentName);
+    groups[group].push({
+      name: currentName,
+      url: line
+    });
 
-      if (line.startsWith('#EXTINF')) {
-        const idx = line.lastIndexOf(',');
-        currentName = idx !== -1 ? line.slice(idx + 1).trim() : '';
-        continue;
-      }
-
-      if (
-        currentName &&
-        (line.startsWith('http://') || line.startsWith('https://'))
-      ) {
-        const group = getGroup(currentName);
-        if (!groups.has(group)) groups.set(group, new Map());
-
-        const chMap = groups.get(group);
-        if (!chMap.has(currentName)) chMap.set(currentName, new Set());
-
-        chMap.get(currentName).add(line);
-        currentName = '';
-      }
-    }
+    currentName = '';
   }
+}
 
-  // ================= 输出 =================
-  const m3u = [
-    '#EXTM3U',
-    `# Generated at ${beijingTime()}`,
-    ''
-  ];
-  const txt = [];
+// ================= 输出 M3U =================
+const m3u = [];
+m3u.push('#EXTM3U');
+m3u.push(`# Generated at ${beijingTime()}`);
+m3u.push('');
 
-  for (const [group, channels] of groups) {
-    const names = Array.from(channels.keys()).sort((a, b) =>
-      a.localeCompare(b, 'zh-CN')
-    );
-
-    for (const name of names) {
-      for (const url of channels.get(name)) {
-        m3u.push(`#EXTINF:-1 group-title="${group}",${name}`);
-        m3u.push(url);
-        txt.push(`${name},${url}`);
-      }
-    }
+for (const group of ['CCTV', '卫视', '地方台']) {
+  for (const item of groups[group]) {
+    m3u.push(`#EXTINF:-1 group-title="${group}",${item.name}`);
+    m3u.push(item.url);
   }
+}
 
-  fs.writeFileSync(M3U_OUTPUT, m3u.join('\n') + '\n', 'utf-8');
-  fs.writeFileSync(TXT_OUTPUT, txt.join('\n') + '\n', 'utf-8');
+// ================= 输出 TXT（Guovin 风格） =================
+const txt = [];
+txt.push(`# Generated at ${beijingTime()}`);
+txt.push('');
 
-  console.log('Done.');
-  console.log(`→ ${M3U_OUTPUT}`);
-  console.log(`→ ${TXT_OUTPUT}`);
-})();
+for (const group of ['CCTV', '卫视', '地方台']) {
+  for (const item of groups[group]) {
+    txt.push(`${item.name},${item.url}`);
+  }
+}
+
+// ================= 写文件 =================
+fs.writeFileSync(OUTPUT_M3U, m3u.join('\n') + '\n', 'utf-8');
+fs.writeFileSync(OUTPUT_TXT, txt.join('\n') + '\n', 'utf-8');
+
+console.log('✔ Generated files:');
+console.log(`  - ${OUTPUT_M3U}`);
+console.log(`  - ${OUTPUT_TXT}`);
+console.log(
+  `  CCTV: ${groups.CCTV.length}, 卫视: ${groups.卫视.length}, 地方台: ${groups.地方台.length}`
+);
