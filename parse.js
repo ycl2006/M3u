@@ -156,10 +156,7 @@ function guessGroup(name) {
         continue;
       }
 
-      if (
-        (line.startsWith('http://') || line.startsWith('https://')) &&
-        currentName
-      ) {
+      if ((line.startsWith('http://') || line.startsWith('https://')) && currentName) {
         const normalizedName = normalizeChannelName(currentName);
         const group = guessGroup(normalizedName);
         if (!data[group]) {
