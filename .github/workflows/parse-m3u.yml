@@ -13,30 +13,90 @@ jobs:
       contents: write
 
     steps:
+      # ===== 拉代码 =====
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # ===== Node =====
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
+      # ===== 依赖（可有可无）=====
       - name: Install dependencies
         run: |
           if [ -f package.json ]; then
             npm ci || npm install
-          else
-            echo "No package.json, skip npm install"
           fi
 
-      # ===== 直接交给 parse.js 处理多源 =====
-      - name: Run IPTV merge & generate
+      # ===== 读取 upstream.conf → 下载 → 合并 =====
+      - name: Fetch & merge upstreams
+        shell: bash
+        run: |
+          set -e
+
+          if [ ! -f upstream.conf ]; then
+            echo "❌ upstream.conf not found"
+            exit 1
+          fi
+
+          rm -f upstream_merged.txt
+          touch upstream_merged.txt
+
+          INDEX=0
+          SUCCESS=0
+
+          echo "===== Upstream list ====="
+          sed -n '1,200p' upstream.conf
+          echo "========================="
+
+          while IFS= read -r line || [ -n "$line" ]; do
+            # 去注释 & 空行
+            line="${line%%#*}"
+            line="$(echo "$line" | xargs)"
+            [ -z "$line" ] && continue
+
+            INDEX=$((INDEX+1))
+            echo "[$INDEX] Fetching: $line"
+
+            if curl -fsSL --connect-timeout 10 --max-time 30 "$line" -o "upstream_$INDEX.txt"; then
+              if [ -s "upstream_$INDEX.txt" ]; then
+                echo "  ✔ success ($(wc -l < upstream_$INDEX.txt) lines)"
+                cat "upstream_$INDEX.txt" >> upstream_merged.txt
+                echo >> upstream_merged.txt
+                SUCCESS=$((SUCCESS+1))
+              else
+                echo "  ⚠ empty file"
+              fi
+            else
+              echo "  ✖ failed"
+            fi
+          done < upstream.conf
+
+          if [ "$SUCCESS" -eq 0 ]; then
+            echo "❌ No upstream data fetched"
+            exit 1
+          fi
+
+          echo "✅ Merged lines: $(wc -l < upstream_merged.txt)"
+
+      # ===== 调试确认（关键）=====
+      - name: Debug merged file
+        run: |
+          echo "===== workspace files ====="
+          ls -lh
+          echo "===== upstream_merged.txt head ====="
+          sed -n '1,20p' upstream_merged.txt
+
+      # ===== 生成 result.m3u / result.txt =====
+      - name: Generate result files
         run: |
           node parse.js
 
-      # ===== 提交变更 =====
+      # ===== 提交 =====
       - name: Commit & Push changes
         run: |
           git config user.name "github-actions[bot]"
