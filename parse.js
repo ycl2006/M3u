@@ -1,38 +1,47 @@
 const fs = require('fs');
 
-// ================= 配置 =================
-const INPUT_FILE = process.argv[2] || 'upstream_merged.txt';
-const OUTPUT_M3U = 'result.m3u';
-const OUTPUT_TXT = 'result.txt';
+const INPUT = 'upstream_merged.txt';
+const OUT_M3U = 'result.m3u';
+const OUT_TXT = 'result.txt';
 
-// ================= 工具函数 =================
+/* ===== 北京时间 ===== */
 function beijingTime() {
-  const d = new Date(Date.now() + 8 * 3600 * 1000);
-  return d.toISOString().replace('T', ' ').replace('Z', ' CST');
+  return new Date(Date.now() + 8 * 3600 * 1000)
+    .toISOString()
+    .replace('T', ' ')
+    .replace(/\..+/, '');
 }
 
+/* ===== 分组规则 ===== */
 function getGroup(name) {
-  if (/^CCTV\d+|CCTV-?\d+|CCTV/.test(name)) return 'CCTV';
+  if (/^CCTV/.test(name)) return 'CCTV';
   if (/卫视/.test(name)) return '卫视';
   return '地方台';
 }
 
-// ================= 读取文件 =================
-if (!fs.existsSync(INPUT_FILE)) {
-  console.error(`Input file not found: ${INPUT_FILE}`);
+/* ===== 读取输入 ===== */
+if (!fs.existsSync(INPUT)) {
+  console.error(`Input file not found: ${INPUT}`);
   process.exit(1);
 }
 
-const lines = fs.readFileSync(INPUT_FILE, 'utf-8').split(/\r?\n/);
+const lines = fs.readFileSync(INPUT, 'utf-8').split(/\r?\n/);
 
-// ================= 解析 =================
+/*
+  数据结构：
+  {
+    CCTV: {
+      'CCTV1 综合': [url1, url2]
+    },
+    卫视: {},
+    地方台: {}
+  }
+*/
 const groups = {
-  CCTV: [],
-  卫视: [],
-  地方台: []
+  CCTV: {},
+  卫视: {},
+  地方台: {},
 };
-
-const seen = new Set();
 
 let currentName = '';
 
@@ -47,54 +56,49 @@ for (let line of lines) {
   }
 
   if ((line.startsWith('http://') || line.startsWith('https://')) && currentName) {
-    const key = currentName + '|' + line;
-    if (seen.has(key)) {
-      currentName = '';
-      continue;
-    }
-    seen.add(key);
-
     const group = getGroup(currentName);
-    groups[group].push({
-      name: currentName,
-      url: line
-    });
-
-    currentName = '';
+    if (!groups[group][currentName]) {
+      groups[group][currentName] = new Set();
+    }
+    groups[group][currentName].add(line);
   }
 }
 
-// ================= 输出 M3U =================
+/* ===== 生成 M3U ===== */
 const m3u = [];
 m3u.push('#EXTM3U');
-m3u.push(`# Generated at ${beijingTime()}`);
+m3u.push(`# Generated at ${beijingTime()} (Asia/Shanghai)`);
 m3u.push('');
 
 for (const group of ['CCTV', '卫视', '地方台']) {
-  for (const item of groups[group]) {
-    m3u.push(`#EXTINF:-1 group-title="${group}",${item.name}`);
-    m3u.push(item.url);
+  for (const [name, urls] of Object.entries(groups[group])) {
+    m3u.push(`#EXTINF:-1 group-title="${group}",${name}`);
+    for (const url of urls) {
+      m3u.push(url);
+    }
+    m3u.push('');
   }
 }
 
-// ================= 输出 TXT（Guovin 风格） =================
+/* ===== 生成 Guovin 同款 TXT ===== */
 const txt = [];
-txt.push(`# Generated at ${beijingTime()}`);
+txt.push(`# Generated at ${beijingTime()} (Asia/Shanghai)`);
 txt.push('');
 
 for (const group of ['CCTV', '卫视', '地方台']) {
-  for (const item of groups[group]) {
-    txt.push(`${item.name},${item.url}`);
+  txt.push(`${group},#genre#`);
+  for (const [name, urls] of Object.entries(groups[group])) {
+    for (const url of urls) {
+      txt.push(`${name},${url}`);
+    }
   }
+  txt.push('');
 }
 
-// ================= 写文件 =================
-fs.writeFileSync(OUTPUT_M3U, m3u.join('\n') + '\n', 'utf-8');
-fs.writeFileSync(OUTPUT_TXT, txt.join('\n') + '\n', 'utf-8');
+/* ===== 写文件 ===== */
+fs.writeFileSync(OUT_M3U, m3u.join('\n'), 'utf-8');
+fs.writeFileSync(OUT_TXT, txt.join('\n'), 'utf-8');
 
-console.log('✔ Generated files:');
-console.log(`  - ${OUTPUT_M3U}`);
-console.log(`  - ${OUTPUT_TXT}`);
-console.log(
-  `  CCTV: ${groups.CCTV.length}, 卫视: ${groups.卫视.length}, 地方台: ${groups.地方台.length}`
-);
+console.log('✔ Generate success');
+console.log(`→ ${OUT_M3U}`);
+console.log(`→ ${OUT_TXT}`);
