@@ -27,86 +27,17 @@ jobs:
         run: |
           if [ -f package.json ]; then
             npm ci || npm install
-          fi
-
-      # ===== 读取 upstream.conf → 下载 → 合并 =====
-      - name: Load, fetch & merge upstreams
-        shell: bash
-        run: |
-          set -e
-
-          if [ ! -f upstream.conf ]; then
-            echo "upstream.conf not found"
-            exit 1
-          fi
-
-          rm -f upstream_merged.txt
-          touch upstream_merged.txt
-
-          INDEX=0
-          SUCCESS=0
-
-          echo "===== Upstream list ====="
-          sed -n '1,200p' upstream.conf
-          echo "========================="
-
-          while IFS= read -r line || [ -n "$line" ]; do
-            # 去注释 & 空白
-            line="${line%%#*}"
-            line="$(echo "$line" | xargs)"
-            [ -z "$line" ] && continue
-
-            INDEX=$((INDEX+1))
-            echo "[$INDEX] Fetching: $line"
-
-            if curl -fsSL --connect-timeout 10 --max-time 30 "$line" -o "upstream_$INDEX.txt"; then
-              if [ -s "upstream_$INDEX.txt" ]; then
-                echo "  ✔ success ($(wc -l < upstream_$INDEX.txt) lines)"
-                cat "upstream_$INDEX.txt" >> upstream_merged.txt
-                echo >> upstream_merged.txt
-                SUCCESS=$((SUCCESS+1))
-              else
-                echo "  ⚠ empty file"
-              fi
-            else
-              echo "  ✖ failed"
-            fi
-          done < upstream.conf
-
-          if [ "$SUCCESS" -eq 0 ]; then
-            echo "No upstream data fetched"
-            exit 1
-          fi
-
-          echo "Merged total lines: $(wc -l < upstream_merged.txt)"
-
-      # ===== 去重 =====
-      - name: Deduplicate merged interface
-        run: |
-          sort -u upstream_merged.txt > raw_interface.txt
-          echo "After deduplication: $(wc -l < raw_interface.txt) lines"
-
-      # ===== 与旧版本对比 =====
-      - name: Compare with existing raw_interface.txt
-        run: |
-          if git show HEAD:raw_interface.txt > raw_interface.txt.bak 2>/dev/null \
-             && cmp -s raw_interface.txt raw_interface.txt.bak; then
-            echo "NO_CHANGE=true" >> "$GITHUB_ENV"
-            echo "No change detected"
           else
-            echo "NO_CHANGE=false" >> "$GITHUB_ENV"
-            echo "Change detected"
+            echo "No package.json, skip npm install"
           fi
 
-      # ===== 生成 M3U / API =====
-      - name: Generate M3U & API files
-        if: env.NO_CHANGE != 'true'
+      # ===== 直接交给 parse.js 处理多源 =====
+      - name: Run IPTV merge & generate
         run: |
           node parse.js
 
-      # ===== 提交 =====
+      # ===== 提交变更 =====
       - name: Commit & Push changes
-        if: env.NO_CHANGE != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -114,7 +45,7 @@ jobs:
           git add raw_interface.txt cleaned_interface.m3u api.txt
 
           git diff --cached --quiet || {
-            git commit -m "chore: merge & dedup upstream interfaces"
+            git commit -m "chore: update IPTV sources ($(date -u '+%Y-%m-%d %H:%M UTC'))"
             git push
           }
         env:
