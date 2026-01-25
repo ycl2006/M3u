@@ -3,6 +3,7 @@ name: Update IPTV Upstream
 on:
   workflow_dispatch:
   schedule:
+    # UTC 10:00 / 22:00（北京时间 18:00 / 06:00）
     - cron: "0 10,22 * * *"
 
 jobs:
@@ -28,73 +29,76 @@ jobs:
             npm ci || npm install
           fi
 
-      # ===== 读取 upstream.conf =====
-      - name: Load upstream list
+      # ===== 读取 upstream.conf → 下载 → 合并 =====
+      - name: Load, fetch & merge upstreams
         shell: bash
         run: |
+          set -e
+
           if [ ! -f upstream.conf ]; then
             echo "upstream.conf not found"
             exit 1
           fi
 
-          mapfile -t UPSTREAM_URLS < <(
-            sed 's/#.*//' upstream.conf | sed '/^\s*$/d'
-          )
-
-          echo "Loaded ${#UPSTREAM_URLS[@]} upstream URLs"
-
-      # ===== 下载并合并所有 upstream =====
-      - name: Fetch & merge all upstreams
-        shell: bash
-        run: |
           rm -f upstream_merged.txt
           touch upstream_merged.txt
 
           INDEX=0
+          SUCCESS=0
 
-          for URL in "${UPSTREAM_URLS[@]}"; do
+          echo "===== Upstream list ====="
+          sed -n '1,200p' upstream.conf
+          echo "========================="
+
+          while IFS= read -r line || [ -n "$line" ]; do
+            # 去注释 & 空白
+            line="${line%%#*}"
+            line="$(echo "$line" | xargs)"
+            [ -z "$line" ] && continue
+
             INDEX=$((INDEX+1))
-            echo "[$INDEX] Fetching: $URL"
+            echo "[$INDEX] Fetching: $line"
 
-            if curl -fsSL --connect-timeout 10 --max-time 30 "$URL" -o "upstream_$INDEX.txt"; then
+            if curl -fsSL --connect-timeout 10 --max-time 30 "$line" -o "upstream_$INDEX.txt"; then
               if [ -s "upstream_$INDEX.txt" ]; then
-                echo "  ✔ success, appending"
+                echo "  ✔ success ($(wc -l < upstream_$INDEX.txt) lines)"
                 cat "upstream_$INDEX.txt" >> upstream_merged.txt
                 echo >> upstream_merged.txt
+                SUCCESS=$((SUCCESS+1))
               else
-                echo "  ⚠ empty file, skipped"
+                echo "  ⚠ empty file"
               fi
             else
               echo "  ✖ failed"
             fi
-          done
+          done < upstream.conf
 
-          if [ ! -s upstream_merged.txt ]; then
+          if [ "$SUCCESS" -eq 0 ]; then
             echo "No upstream data fetched"
             exit 1
           fi
 
-          echo "Merged size: $(wc -l < upstream_merged.txt) lines"
+          echo "Merged total lines: $(wc -l < upstream_merged.txt)"
 
-      # ===== 去重并生成 raw_interface.txt =====
+      # ===== 去重 =====
       - name: Deduplicate merged interface
         run: |
           sort -u upstream_merged.txt > raw_interface.txt
           echo "After deduplication: $(wc -l < raw_interface.txt) lines"
 
-      # ===== 内容对比 =====
+      # ===== 与旧版本对比 =====
       - name: Compare with existing raw_interface.txt
         run: |
-          if [ -f raw_interface.txt.bak ]; then rm raw_interface.txt.bak; fi
-
           if git show HEAD:raw_interface.txt > raw_interface.txt.bak 2>/dev/null \
              && cmp -s raw_interface.txt raw_interface.txt.bak; then
             echo "NO_CHANGE=true" >> "$GITHUB_ENV"
+            echo "No change detected"
           else
             echo "NO_CHANGE=false" >> "$GITHUB_ENV"
+            echo "Change detected"
           fi
 
-      # ===== 生成输出 =====
+      # ===== 生成 M3U / API =====
       - name: Generate M3U & API files
         if: env.NO_CHANGE != 'true'
         run: |
