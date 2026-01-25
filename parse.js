@@ -9,6 +9,7 @@ const CONF = 'upstream.conf';
 const OUT_TXT = 'result.txt';
 const OUT_M3U = 'result.m3u';
 const BACKUP_DIR = 'backup';
+const RULE_FILE = 'channel_rules_full.json';
 
 /* ================= 工具 ================= */
 function fetch(url) {
@@ -41,7 +42,26 @@ function beijingTime() {
     .replace(/\..+/, '');
 }
 
-function guessGroup(name) {
+/* ===== 读取频道规则 ===== */
+let channelRules = {};
+if (fs.existsSync(RULE_FILE)) {
+  channelRules = JSON.parse(fs.readFileSync(RULE_FILE, 'utf-8'));
+} else {
+  console.warn(`⚠ ${RULE_FILE} 不存在，将按默认分组`);
+}
+
+/* ===== 根据规则匹配频道 ===== */
+function matchChannel(name) {
+  for (const [group, patterns] of Object.entries(channelRules)) {
+    for (const pattern of patterns) {
+      try {
+        if (new RegExp(pattern, 'i').test(name)) return group;
+      } catch (e) {
+        continue;
+      }
+    }
+  }
+  // 默认分组
   if (/^CCTV/.test(name)) return 'CCTV';
   if (/卫视/.test(name)) return '卫视';
   return '地方台';
@@ -54,7 +74,6 @@ function guessGroup(name) {
     process.exit(1);
   }
 
-  // 读取 upstream.conf
   const lines = fs
     .readFileSync(CONF, 'utf-8')
     .split(/\r?\n/)
@@ -78,8 +97,7 @@ function guessGroup(name) {
   console.log('MAIN:', mainUrl);
   console.log('EXT :', extUrls.length);
 
-  // 数据结构
-  const data = {};
+  const data = {}; // { group: { order: [], channels: { name: Set(url) } } }
 
   // ===== 1. 解析主源 TXT =====
   console.log('Fetching MAIN source...');
@@ -91,9 +109,7 @@ function guessGroup(name) {
 
     if (line.endsWith(',#genre#')) {
       currentGroup = line.replace(',#genre#', '');
-      if (!data[currentGroup]) {
-        data[currentGroup] = { order: [], channels: {} };
-      }
+      if (!data[currentGroup]) data[currentGroup] = { order: [], channels: {} };
       continue;
     }
 
@@ -104,15 +120,17 @@ function guessGroup(name) {
 
     const name = line.slice(0, idx).trim();
     const url = line.slice(idx + 1).trim();
+    const group = matchChannel(name);
 
-    if (!data[currentGroup].channels[name]) {
-      data[currentGroup].channels[name] = new Set();
-      data[currentGroup].order.push(name);
+    if (!data[group]) data[group] = { order: [], channels: {} };
+    if (!data[group].channels[name]) {
+      data[group].channels[name] = new Set();
+      data[group].order.push(name);
     }
-    data[currentGroup].channels[name].add(url);
+    data[group].channels[name].add(url);
   }
 
-  // ===== 2. 解析补充源 M3U =====
+  // ===== 2. 解析扩展源 M3U =====
   for (const url of extUrls) {
     console.log('Fetching EXT:', url);
     let text;
@@ -124,7 +142,6 @@ function guessGroup(name) {
     }
 
     let currentName = '';
-
     for (let line of text.split(/\r?\n/)) {
       line = line.trim();
       if (!line) continue;
@@ -136,7 +153,7 @@ function guessGroup(name) {
       }
 
       if ((line.startsWith('http://') || line.startsWith('https://')) && currentName) {
-        const group = guessGroup(currentName);
+        const group = matchChannel(currentName);
         if (!data[group]) data[group] = { order: [], channels: {} };
         if (!data[group].channels[currentName]) {
           data[group].channels[currentName] = new Set();
@@ -148,51 +165,31 @@ function guessGroup(name) {
     }
   }
 
-  // ===== 3. 备份旧文件（可选） =====
+  // ===== 3. 备份旧文件 =====
   if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR);
-
-  if (fs.existsSync(OUT_TXT)) {
-    const backupName = `backup_txt_${Date.now()}.txt`;
-    fs.copyFileSync(OUT_TXT, path.join(BACKUP_DIR, backupName));
-  }
-  if (fs.existsSync(OUT_M3U)) {
-    const backupName = `backup_m3u_${Date.now()}.m3u`;
-    fs.copyFileSync(OUT_M3U, path.join(BACKUP_DIR, backupName));
-  }
+  if (fs.existsSync(OUT_TXT)) fs.copyFileSync(OUT_TXT, path.join(BACKUP_DIR, `backup_txt_${Date.now()}.txt`));
+  if (fs.existsSync(OUT_M3U)) fs.copyFileSync(OUT_M3U, path.join(BACKUP_DIR, `backup_m3u_${Date.now()}.m3u`));
 
   // ===== 4. 输出 TXT =====
-  const txt = [];
-  txt.push(`# Generated at ${beijingTime()} (Asia/Shanghai)`);
-  txt.push('');
-
+  const txt = [`# Generated at ${beijingTime()} (Asia/Shanghai)`, ''];
   for (const group of Object.keys(data)) {
     txt.push(`${group},#genre#`);
     for (const name of data[group].order) {
-      for (const url of data[group].channels[name]) {
-        txt.push(`${name},${url}`);
-      }
+      for (const url of data[group].channels[name]) txt.push(`${name},${url}`);
     }
     txt.push('');
   }
-
   fs.writeFileSync(OUT_TXT, txt.join('\n'), 'utf-8');
 
   // ===== 5. 输出 M3U =====
-  const m3u = [];
-  m3u.push('#EXTM3U');
-  m3u.push(`# Generated at ${beijingTime()} (Asia/Shanghai)`);
-  m3u.push('');
-
+  const m3u = [`#EXTM3U`, `# Generated at ${beijingTime()} (Asia/Shanghai)`, ''];
   for (const group of Object.keys(data)) {
     for (const name of data[group].order) {
       m3u.push(`#EXTINF:-1 group-title="${group}",${name}`);
-      for (const url of data[group].channels[name]) {
-        m3u.push(url);
-      }
+      for (const url of data[group].channels[name]) m3u.push(url);
       m3u.push('');
     }
   }
-
   fs.writeFileSync(OUT_M3U, m3u.join('\n'), 'utf-8');
 
   console.log('✔ result.txt 和 result.m3u 已更新');
