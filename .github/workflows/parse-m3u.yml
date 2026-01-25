@@ -3,7 +3,7 @@ name: Update IPTV Upstream
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 10,22 * * *"   # UTC 10:00 / 22:00（JST 19:00 / 07:00）
+    - cron: "0 10,22 * * *"
 
 jobs:
   update:
@@ -21,17 +21,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: |
           if [ -f package.json ]; then
             npm ci || npm install
-          else
-            echo "No package.json, skip npm install"
           fi
 
-      # ===== 读取 upstream.conf（一行一个链接）=====
+      # ===== 读取 upstream.conf =====
       - name: Load upstream list
         shell: bash
         run: |
@@ -44,58 +41,58 @@ jobs:
             sed 's/#.*//' upstream.conf | sed '/^\s*$/d'
           )
 
-          if [ ${#UPSTREAM_URLS[@]} -eq 0 ]; then
-            echo "No upstream URLs found"
-            exit 1
-          fi
-
           echo "Loaded ${#UPSTREAM_URLS[@]} upstream URLs"
 
-      # ===== 多源轮询下载 =====
-      - name: Fetch upstream interface.txt (multi-source)
+      # ===== 下载并合并所有 upstream =====
+      - name: Fetch & merge all upstreams
         shell: bash
         run: |
-          SUCCESS=false
+          rm -f upstream_merged.txt
+          touch upstream_merged.txt
+
+          INDEX=0
 
           for URL in "${UPSTREAM_URLS[@]}"; do
-            echo "Trying upstream: $URL"
+            INDEX=$((INDEX+1))
+            echo "[$INDEX] Fetching: $URL"
 
-            if curl -fsSL --connect-timeout 10 --max-time 30 "$URL" -o upstream.txt; then
-              if [ -s upstream.txt ]; then
-                echo "Download success from: $URL"
-                SUCCESS=true
-                break
+            if curl -fsSL --connect-timeout 10 --max-time 30 "$URL" -o "upstream_$INDEX.txt"; then
+              if [ -s "upstream_$INDEX.txt" ]; then
+                echo "  ✔ success, appending"
+                cat "upstream_$INDEX.txt" >> upstream_merged.txt
+                echo >> upstream_merged.txt
               else
-                echo "Downloaded but empty file"
+                echo "  ⚠ empty file, skipped"
               fi
             else
-              echo "Failed to download from: $URL"
+              echo "  ✖ failed"
             fi
           done
 
-          if [ "$SUCCESS" != "true" ]; then
-            echo "All upstream sources failed"
+          if [ ! -s upstream_merged.txt ]; then
+            echo "No upstream data fetched"
             exit 1
           fi
 
-          echo "Final upstream.txt size: $(stat -c%s upstream.txt) bytes"
+          echo "Merged size: $(wc -l < upstream_merged.txt) lines"
+
+      # ===== 去重并生成 raw_interface.txt =====
+      - name: Deduplicate merged interface
+        run: |
+          sort -u upstream_merged.txt > raw_interface.txt
+          echo "After deduplication: $(wc -l < raw_interface.txt) lines"
 
       # ===== 内容对比 =====
       - name: Compare with existing raw_interface.txt
         run: |
-          if [ -f raw_interface.txt ] && cmp -s upstream.txt raw_interface.txt; then
+          if [ -f raw_interface.txt.bak ]; then rm raw_interface.txt.bak; fi
+
+          if git show HEAD:raw_interface.txt > raw_interface.txt.bak 2>/dev/null \
+             && cmp -s raw_interface.txt raw_interface.txt.bak; then
             echo "NO_CHANGE=true" >> "$GITHUB_ENV"
-            echo "No change detected"
           else
             echo "NO_CHANGE=false" >> "$GITHUB_ENV"
-            echo "Change detected"
           fi
-
-      # ===== 更新原始文件 =====
-      - name: Update raw_interface.txt
-        if: env.NO_CHANGE != 'true'
-        run: |
-          mv upstream.txt raw_interface.txt
 
       # ===== 生成输出 =====
       - name: Generate M3U & API files
@@ -113,13 +110,8 @@ jobs:
           git add raw_interface.txt cleaned_interface.m3u api.txt
 
           git diff --cached --quiet || {
-            git commit -m "chore: sync upstream $(date +'%Y-%m-%d %H:%M UTC')"
+            git commit -m "chore: merge & dedup upstream interfaces"
             git push
           }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Done
-        run: |
-          echo "Workflow finished."
-          echo "NO_CHANGE=${NO_CHANGE:-false}"
