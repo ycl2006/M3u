@@ -8,6 +8,29 @@ const CONF_FILE = 'upstream.conf';
 const M3U_OUTPUT = 'cleaned_interface.m3u';
 const API_OUTPUT = 'api.txt';
 
+// ===== 北京时间工具函数 =====
+function getBeijingTime() {
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const bj = new Date(utc + 8 * 3600000);
+
+  const pad = n => String(n).padStart(2, '0');
+
+  return (
+    bj.getFullYear() +
+    '-' +
+    pad(bj.getMonth() + 1) +
+    '-' +
+    pad(bj.getDate()) +
+    ' ' +
+    pad(bj.getHours()) +
+    ':' +
+    pad(bj.getMinutes()) +
+    ':' +
+    pad(bj.getSeconds())
+  );
+}
+
 // ===== 下载函数 =====
 function fetchUrl(url) {
   return new Promise((resolve, reject) => {
@@ -59,11 +82,20 @@ function fetchUrl(url) {
 
   console.log(`Loaded ${upstreams.length} upstream URLs`);
 
+  // ===== 时间戳 =====
+  const timestamp = getBeijingTime();
+
   // 用于去重：channelName + url
   const seen = new Set();
 
-  const m3u = ['#EXTM3U'];
-  const apiTxt = [];
+  const m3u = [
+    '#EXTM3U',
+    `# Generated at ${timestamp} (Beijing Time)`
+  ];
+
+  const apiTxt = [
+    `# Generated at ${timestamp} (Beijing Time)`
+  ];
 
   let entryCount = 0;
   let skipped = 0;
@@ -98,9 +130,7 @@ function fetchUrl(url) {
         currentName
       ) {
         const key = `${currentName}|${line}`;
-        if (seen.has(key)) {
-          continue;
-        }
+        if (seen.has(key)) continue;
         seen.add(key);
 
         m3u.push(`#EXTINF:-1,${currentName}`);
@@ -126,6 +156,7 @@ function fetchUrl(url) {
   console.log(`\nSuccess!`);
   console.log(`  Entries: ${entryCount}`);
   console.log(`  Unique pairs: ${seen.size}`);
+  console.log(`  Generated at: ${timestamp} (Beijing Time)`);
   console.log(`  → ${M3U_OUTPUT}`);
   console.log(`  → ${API_OUTPUT}`);
   if (skipped > 0) {
