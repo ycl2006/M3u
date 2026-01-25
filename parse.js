@@ -1,68 +1,152 @@
-import fs from "fs";
+const fs = require('fs');
+const https = require('https');
+const http = require('http');
+const { URL } = require('url');
 
-/* ===== 配置 ===== */
-const TEMPLATE_FILE = "template.txt";        // 主模板（Guovin result.txt）
-const MERGED_FILE   = "raw_interface.txt";   // 合并后的所有源
-const OUTPUT_M3U    = "result.m3u";
-const OUTPUT_TXT    = "result.txt";
+// ================= 配置 =================
+const CONF_FILE = 'upstream.conf';
+const RAW_OUTPUT = 'raw_interface.txt';
+const M3U_OUTPUT = 'cleaned_interface.m3u';
+const API_OUTPUT = 'api.txt';
 
-/* ===== 生成北京时间时间戳 ===== */
-function beijingTime() {
-  const now = new Date();
-  const utc8 = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+// ================= 工具函数 =================
+function fetchUrl(url) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const lib = u.protocol === 'https:' ? https : http;
 
-  const pad = n => String(n).padStart(2, "0");
+    const req = lib.get(url, { timeout: 15000 }, res => {
+      if (res.statusCode !== 200) {
+        reject(new Error(`HTTP ${res.statusCode}`));
+        res.resume();
+        return;
+      }
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', c => (data += c));
+      res.on('end', () => resolve(data));
+    });
 
-  return `${utc8.getUTCFullYear()}-${pad(utc8.getUTCMonth() + 1)}-${pad(utc8.getUTCDate())} `
-       + `${pad(utc8.getUTCHours())}:${pad(utc8.getUTCMinutes())}:${pad(utc8.getUTCSeconds())}`;
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Timeout'));
+    });
+  });
 }
 
-const TIME_STAMP = beijingTime();
+// 北京时间
+function beijingTime() {
+  return new Date(Date.now() + 8 * 3600 * 1000)
+    .toISOString()
+    .replace('T', ' ')
+    .replace('Z', ' +08:00');
+}
 
-/* ===== 读取文件 ===== */
-const template = fs.readFileSync(TEMPLATE_FILE, "utf-8").split(/\r?\n/);
-const pool = fs.readFileSync(MERGED_FILE, "utf-8")
-  .split(/\r?\n/)
-  .map(l => l.trim())
-  .filter(l => l && l.startsWith("http"));
-
-// 去重 URL
-const urlSet = new Set(pool);
-
-/* ===== 初始化输出 ===== */
-let m3u = `#EXTM3U\n# Generated at: ${TIME_STAMP} (UTC+8 Beijing Time)\n\n`;
-let txt = `# Generated at: ${TIME_STAMP} (UTC+8 Beijing Time)\n\n`;
-
-let currentExtinf = null;
-
-/* ===== 按模板输出 ===== */
-for (let line of template) {
-  line = line.trim();
-
-  if (line.startsWith("#EXTINF")) {
-    currentExtinf = line;
-    continue;
+// ================= 主逻辑 =================
+(async () => {
+  if (!fs.existsSync(CONF_FILE)) {
+    console.error('upstream.conf not found');
+    process.exit(1);
   }
 
-  if (currentExtinf && line.startsWith("http")) {
-    // 模板原始源
-    m3u += `${currentExtinf}\n${line}\n`;
-    txt += `${currentExtinf}\n${line}\n`;
+  const upstreams = fs
+    .readFileSync(CONF_FILE, 'utf-8')
+    .split(/\r?\n/)
+    .map(l => l.replace(/#.*/, '').trim())
+    .filter(Boolean);
 
-    // 补充源
-    for (const url of urlSet) {
-      if (url !== line) {
-        m3u += `${currentExtinf}\n${url}\n`;
-        txt += `${currentExtinf}\n${url}\n`;
-      }
+  if (upstreams.length === 0) {
+    console.error('No upstream URLs');
+    process.exit(1);
+  }
+
+  console.log(`Loaded ${upstreams.length} upstreams`);
+
+  // channelName => { urls:Set, sources:Set }
+  const channels = new Map();
+
+  for (const upstream of upstreams) {
+    console.log(`Fetching: ${upstream}`);
+    let text;
+    try {
+      text = await fetchUrl(upstream);
+    } catch (e) {
+      console.warn(`  ✖ failed: ${e.message}`);
+      continue;
     }
 
-    currentExtinf = null;
+    let currentName = '';
+    for (let line of text.split(/\r?\n/)) {
+      line = line.trim();
+      if (!line) continue;
+
+      if (line.startsWith('#EXTINF')) {
+        const idx = line.lastIndexOf(',');
+        currentName = idx !== -1 ? line.slice(idx + 1).trim() : '';
+        continue;
+      }
+
+      if (
+        currentName &&
+        (line.startsWith('http://') || line.startsWith('https://'))
+      ) {
+        if (!channels.has(currentName)) {
+          channels.set(currentName, {
+            urls: new Set(),
+            sources: new Set()
+          });
+        }
+        const ch = channels.get(currentName);
+        ch.urls.add(line);
+        ch.sources.add(upstream);
+        currentName = '';
+      }
+    }
   }
-}
 
-/* ===== 写文件 ===== */
-fs.writeFileSync(OUTPUT_M3U, m3u.trim() + "\n");
-fs.writeFileSync(OUTPUT_TXT, txt.trim() + "\n");
+  if (channels.size === 0) {
+    console.error('No valid channels parsed');
+    process.exit(1);
+  }
 
-console.log("✔ Generated result.m3u & result.txt with Beijing timestamp");
+  // ================= 排序（中文友好） =================
+  const sortedNames = Array.from(channels.keys()).sort((a, b) =>
+    a.localeCompare(b, 'zh-CN')
+  );
+
+  // ================= 输出 =================
+  const header = [
+    '#EXTM3U',
+    `# Generated at ${beijingTime()}`,
+    `# Channels: ${sortedNames.length}`,
+    ''
+  ];
+
+  const m3u = [...header];
+  const apiTxt = [];
+
+  for (const name of sortedNames) {
+    const { urls, sources } = channels.get(name);
+
+    // 来源注释（不影响播放器）
+    m3u.push(`# ---- ${name} | sources: ${Array.from(sources).length} ----`);
+
+    for (const url of urls) {
+      m3u.push(`#EXTINF:-1,${name}`);
+      m3u.push(url);
+      apiTxt.push(`${name},${url}`);
+    }
+  }
+
+  // ================= 写文件 =================
+  fs.writeFileSync(RAW_OUTPUT, m3u.slice(1).join('\n') + '\n', 'utf-8');
+  fs.writeFileSync(M3U_OUTPUT, m3u.join('\n') + '\n', 'utf-8');
+  fs.writeFileSync(API_OUTPUT, apiTxt.join('\n') + '\n', 'utf-8');
+
+  console.log('\nSuccess!');
+  console.log(`Channels: ${sortedNames.length}`);
+  console.log(`Total URLs: ${apiTxt.length}`);
+  console.log(`→ ${M3U_OUTPUT}`);
+  console.log(`→ ${API_OUTPUT}`);
+})();
