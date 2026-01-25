@@ -1,165 +1,58 @@
-const fs = require('fs');
-const https = require('https');
-const http = require('http');
-const { URL } = require('url');
+import fs from "fs";
 
-// ===== 配置 =====
-const CONF_FILE = 'upstream.conf';
-const M3U_OUTPUT = 'cleaned_interface.m3u';
-const API_OUTPUT = 'api.txt';
+const TEMPLATE_FILE = "template.txt";        // Guovin result.txt
+const MERGED_FILE   = "raw_interface.txt";   // 所有源合并后的接口池
+const OUTPUT_M3U    = "result.m3u";
+const OUTPUT_TXT    = "result.txt";
 
-// ===== 北京时间工具函数 =====
-function getBeijingTime() {
-  const now = new Date();
-  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-  const bj = new Date(utc + 8 * 3600000);
+// 读取文件
+const template = fs.readFileSync(TEMPLATE_FILE, "utf-8").split("\n");
+const pool = fs.readFileSync(MERGED_FILE, "utf-8")
+  .split("\n")
+  .map(l => l.trim())
+  .filter(l => l && l.startsWith("http"));
 
-  const pad = n => String(n).padStart(2, '0');
+// URL 去重
+const urlSet = new Set(pool);
 
-  return (
-    bj.getFullYear() +
-    '-' +
-    pad(bj.getMonth() + 1) +
-    '-' +
-    pad(bj.getDate()) +
-    ' ' +
-    pad(bj.getHours()) +
-    ':' +
-    pad(bj.getMinutes()) +
-    ':' +
-    pad(bj.getSeconds())
-  );
-}
+// 输出内容
+let m3u = `#EXTM3U\n`;
+let txt = ``;
 
-// ===== 下载函数 =====
-function fetchUrl(url) {
-  return new Promise((resolve, reject) => {
-    const u = new URL(url);
-    const lib = u.protocol === 'https:' ? https : http;
+let currentExtinf = null;
 
-    const req = lib.get(
-      url,
-      { timeout: 15000 },
-      res => {
-        if (res.statusCode !== 200) {
-          reject(new Error(`HTTP ${res.statusCode}`));
-          res.resume();
-          return;
-        }
+for (let line of template) {
+  line = line.trim();
 
-        let data = '';
-        res.setEncoding('utf8');
-        res.on('data', chunk => (data += chunk));
-        res.on('end', () => resolve(data));
-      }
-    );
-
-    req.on('error', reject);
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Timeout'));
-    });
-  });
-}
-
-// ===== 主逻辑 =====
-(async () => {
-  if (!fs.existsSync(CONF_FILE)) {
-    console.error(`Error: ${CONF_FILE} not found`);
-    process.exit(1);
+  // EXTINF 行，直接作为模板
+  if (line.startsWith("#EXTINF")) {
+    currentExtinf = line;
+    continue;
   }
 
-  const upstreams = fs
-    .readFileSync(CONF_FILE, 'utf-8')
-    .split('\n')
-    .map(l => l.replace(/#.*/, '').trim())
-    .filter(Boolean);
+  // 模板里的播放地址
+  if (currentExtinf && line.startsWith("http")) {
+    // 主源地址
+    m3u += `${currentExtinf}\n`;
+    m3u += `${line}\n`;
 
-  if (upstreams.length === 0) {
-    console.error('No upstream URLs');
-    process.exit(1);
-  }
+    txt += `${currentExtinf}\n`;
+    txt += `${line}\n`;
 
-  console.log(`Loaded ${upstreams.length} upstream URLs`);
-
-  // ===== 时间戳 =====
-  const timestamp = getBeijingTime();
-
-  // 用于去重：channelName + url
-  const seen = new Set();
-
-  const m3u = [
-    '#EXTM3U',
-    `# Generated at ${timestamp} (Beijing Time)`
-  ];
-
-  const apiTxt = [
-    `# Generated at ${timestamp} (Beijing Time)`
-  ];
-
-  let entryCount = 0;
-  let skipped = 0;
-
-  for (const upstream of upstreams) {
-    console.log(`Fetching: ${upstream}`);
-
-    let text;
-    try {
-      text = await fetchUrl(upstream);
-    } catch (e) {
-      console.warn(`  ✖ failed: ${e.message}`);
-      continue;
-    }
-
-    const lines = text.split(/\r?\n/);
-    let currentName = '';
-
-    for (let line of lines) {
-      line = line.trim();
-      if (!line) continue;
-
-      if (line.startsWith('#EXTINF')) {
-        const commaIndex = line.lastIndexOf(',');
-        currentName =
-          commaIndex !== -1 ? line.slice(commaIndex + 1).trim() : '';
-        continue;
-      }
-
-      if (
-        (line.startsWith('http://') || line.startsWith('https://')) &&
-        currentName
-      ) {
-        const key = `${currentName}|${line}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-
-        m3u.push(`#EXTINF:-1,${currentName}`);
-        m3u.push(line);
-        apiTxt.push(`${currentName},${line}`);
-
-        entryCount++;
-        currentName = '';
-      } else if (line.startsWith('http') && !currentName) {
-        skipped++;
+    // 补充源地址（全部追加）
+    for (const url of urlSet) {
+      if (url !== line) {
+        m3u += `${currentExtinf}\n${url}\n`;
+        txt += `${currentExtinf}\n${url}\n`;
       }
     }
-  }
 
-  if (entryCount === 0) {
-    console.error('No valid entries generated');
-    process.exit(1);
+    currentExtinf = null;
   }
+}
 
-  fs.writeFileSync(M3U_OUTPUT, m3u.join('\n') + '\n', 'utf-8');
-  fs.writeFileSync(API_OUTPUT, apiTxt.join('\n') + '\n', 'utf-8');
+// 写文件
+fs.writeFileSync(OUTPUT_M3U, m3u);
+fs.writeFileSync(OUTPUT_TXT, txt);
 
-  console.log(`\nSuccess!`);
-  console.log(`  Entries: ${entryCount}`);
-  console.log(`  Unique pairs: ${seen.size}`);
-  console.log(`  Generated at: ${timestamp} (Beijing Time)`);
-  console.log(`  → ${M3U_OUTPUT}`);
-  console.log(`  → ${API_OUTPUT}`);
-  if (skipped > 0) {
-    console.warn(`  Skipped orphan URLs: ${skipped}`);
-  }
-})();
+console.log("✔ M3U & TXT generated");
