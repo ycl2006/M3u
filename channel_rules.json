@@ -1,0 +1,7 @@
+{
+  "CCTV-1": ["^CCTV[-\\s]?1", "CCTV1综合", "CCTV1HD", "CCTV-1 高清"],
+  "CCTV-2": ["^CCTV[-\\s]?2", "CCTV2财经HD"],
+  "CCTV-3": ["^CCTV[-\\s]?3", "CCTV3综艺HD"],
+  "CCTV-4": ["^CCTV[-\\s]?4"],
+  "CCTV-5": ["^CCTV[-\\s]?5", "CCTV5体育HD"]
+}
