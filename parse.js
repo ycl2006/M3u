@@ -2,34 +2,13 @@ const fs = require('fs');
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
+const path = require('path');
 
 /* ================= 配置 ================= */
 const CONF = 'upstream.conf';
 const OUT_TXT = 'result.txt';
 const OUT_M3U = 'result.m3u';
-
-/* ================= 频道归一化 + 高清 ================= */
-const channelRules = JSON.parse(fs.readFileSync('./channel_rules.json', 'utf8'));
-
-function normalizeChannelName(name) {
-  name = name.trim();
-  for (const standard of Object.keys(channelRules)) {
-    for (const pattern of channelRules[standard]) {
-      try {
-        const regex = new RegExp(pattern, 'i');
-        if (regex.test(name)) return standard;
-      } catch (e) {
-        if (pattern.toLowerCase() === name.toLowerCase()) return standard;
-      }
-    }
-  }
-  return name;
-}
-
-function isHD(name, url) {
-  const combined = (name + url).toUpperCase();
-  return combined.includes('HD') || combined.includes('1080') || combined.includes('720');
-}
+const BACKUP_DIR = 'backup';
 
 /* ================= 工具 ================= */
 function fetch(url) {
@@ -75,6 +54,7 @@ function guessGroup(name) {
     process.exit(1);
   }
 
+  // 读取 upstream.conf
   const lines = fs
     .readFileSync(CONF, 'utf-8')
     .split(/\r?\n/)
@@ -98,9 +78,10 @@ function guessGroup(name) {
   console.log('MAIN:', mainUrl);
   console.log('EXT :', extUrls.length);
 
+  // 数据结构
   const data = {};
 
-  /* ========= 1. 解析主源 TXT ========= */
+  // ===== 1. 解析主源 TXT =====
   console.log('Fetching MAIN source...');
   const mainText = await fetch(mainUrl);
   let currentGroup = null;
@@ -121,19 +102,17 @@ function guessGroup(name) {
     const idx = line.indexOf(',');
     if (idx === -1) continue;
 
-    let name = line.slice(0, idx).trim();
+    const name = line.slice(0, idx).trim();
     const url = line.slice(idx + 1).trim();
 
-    name = normalizeChannelName(name); // 归一化
-
     if (!data[currentGroup].channels[name]) {
-      data[currentGroup].channels[name] = [];
+      data[currentGroup].channels[name] = new Set();
       data[currentGroup].order.push(name);
     }
-    data[currentGroup].channels[name].push({ url, hd: isHD(name, url) });
+    data[currentGroup].channels[name].add(url);
   }
 
-  /* ========= 2. 解析补充源 M3U ========= */
+  // ===== 2. 解析补充源 M3U =====
   for (const url of extUrls) {
     console.log('Fetching EXT:', url);
     let text;
@@ -157,22 +136,31 @@ function guessGroup(name) {
       }
 
       if ((line.startsWith('http://') || line.startsWith('https://')) && currentName) {
-        const normalizedName = normalizeChannelName(currentName);
-        const group = guessGroup(normalizedName);
-        if (!data[group]) {
-          data[group] = { order: [], channels: {} };
+        const group = guessGroup(currentName);
+        if (!data[group]) data[group] = { order: [], channels: {} };
+        if (!data[group].channels[currentName]) {
+          data[group].channels[currentName] = new Set();
+          data[group].order.push(currentName);
         }
-        if (!data[group].channels[normalizedName]) {
-          data[group].channels[normalizedName] = [];
-          data[group].order.push(normalizedName);
-        }
-        data[group].channels[normalizedName].push({ url: line, hd: isHD(currentName, line) });
+        data[group].channels[currentName].add(line);
         currentName = '';
       }
     }
   }
 
-  /* ========= 3. 输出 TXT ========= */
+  // ===== 3. 备份旧文件（可选） =====
+  if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR);
+
+  if (fs.existsSync(OUT_TXT)) {
+    const backupName = `backup_txt_${Date.now()}.txt`;
+    fs.copyFileSync(OUT_TXT, path.join(BACKUP_DIR, backupName));
+  }
+  if (fs.existsSync(OUT_M3U)) {
+    const backupName = `backup_m3u_${Date.now()}.m3u`;
+    fs.copyFileSync(OUT_M3U, path.join(BACKUP_DIR, backupName));
+  }
+
+  // ===== 4. 输出 TXT =====
   const txt = [];
   txt.push(`# Generated at ${beijingTime()} (Asia/Shanghai)`);
   txt.push('');
@@ -180,14 +168,16 @@ function guessGroup(name) {
   for (const group of Object.keys(data)) {
     txt.push(`${group},#genre#`);
     for (const name of data[group].order) {
-      for (const item of data[group].channels[name]) {
-        txt.push(`${name},${item.url}`);
+      for (const url of data[group].channels[name]) {
+        txt.push(`${name},${url}`);
       }
     }
     txt.push('');
   }
 
-  /* ========= 4. 输出 M3U（高清优先） ========= */
+  fs.writeFileSync(OUT_TXT, txt.join('\n'), 'utf-8');
+
+  // ===== 5. 输出 M3U =====
   const m3u = [];
   m3u.push('#EXTM3U');
   m3u.push(`# Generated at ${beijingTime()} (Asia/Shanghai)`);
@@ -195,21 +185,15 @@ function guessGroup(name) {
 
   for (const group of Object.keys(data)) {
     for (const name of data[group].order) {
-      const urls = data[group].channels[name];
-      const urlsSorted = urls.sort((a, b) => (b.hd === true) - (a.hd === true));
-
-      for (const item of urlsSorted) {
-        m3u.push(`#EXTINF:-1 group-title="${group}",${name}`);
-        m3u.push(item.url);
-        m3u.push('');
+      m3u.push(`#EXTINF:-1 group-title="${group}",${name}`);
+      for (const url of data[group].channels[name]) {
+        m3u.push(url);
       }
+      m3u.push('');
     }
   }
 
-  fs.writeFileSync(OUT_TXT, txt.join('\n'), 'utf-8');
   fs.writeFileSync(OUT_M3U, m3u.join('\n'), 'utf-8');
 
-  console.log('✔ Done');
-  console.log('→', OUT_TXT);
-  console.log('→', OUT_M3U);
+  console.log('✔ result.txt 和 result.m3u 已更新');
 })();
