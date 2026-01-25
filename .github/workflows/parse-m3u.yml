@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   schedule:
     # UTC 10:00 / 22:00（北京时间 18:00 / 06:00）
-    - cron: "0 10,22 * * *"
+    - cron: "30 10,22 * * *"
 
 jobs:
   update:
