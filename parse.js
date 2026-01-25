@@ -43,6 +43,23 @@ function beijingTime() {
     .replace('Z', ' +08:00');
 }
 
+// ================= 分组规则 =================
+function getGroup(name) {
+  if (/^CCTV|中国教育|CGTN/i.test(name)) return '央视';
+  if (/卫视/.test(name)) return '卫视';
+
+  if (
+    /(北京|上海|广东|深圳|江苏|浙江|山东|河南|湖北|湖南|四川|重庆|安徽|福建|江西|广西|云南|贵州|陕西|山西|河北|辽宁|吉林|黑龙江|内蒙古|宁夏|青海|新疆|西藏|海南|甘肃|天津)/.test(
+      name
+    ) ||
+    /(都市|生活|新闻|公共|影视|综艺|经济|法治|少儿)/.test(name)
+  ) {
+    return '地方台';
+  }
+
+  return '其它';
+}
+
 // ================= 主逻辑 =================
 (async () => {
   if (!fs.existsSync(CONF_FILE)) {
@@ -61,10 +78,8 @@ function beijingTime() {
     process.exit(1);
   }
 
-  console.log(`Loaded ${upstreams.length} upstreams`);
-
-  // channelName => { urls:Set, sources:Set }
-  const channels = new Map();
+  // group -> channelName -> { urls:Set, sources:Set }
+  const groups = new Map();
 
   for (const upstream of upstreams) {
     console.log(`Fetching: ${upstream}`);
@@ -91,13 +106,15 @@ function beijingTime() {
         currentName &&
         (line.startsWith('http://') || line.startsWith('https://'))
       ) {
-        if (!channels.has(currentName)) {
-          channels.set(currentName, {
-            urls: new Set(),
-            sources: new Set()
-          });
+        const group = getGroup(currentName);
+        if (!groups.has(group)) groups.set(group, new Map());
+
+        const chMap = groups.get(group);
+        if (!chMap.has(currentName)) {
+          chMap.set(currentName, { urls: new Set(), sources: new Set() });
         }
-        const ch = channels.get(currentName);
+
+        const ch = chMap.get(currentName);
         ch.urls.add(line);
         ch.sources.add(upstream);
         currentName = '';
@@ -105,48 +122,31 @@ function beijingTime() {
     }
   }
 
-  if (channels.size === 0) {
-    console.error('No valid channels parsed');
-    process.exit(1);
-  }
-
-  // ================= 排序（中文友好） =================
-  const sortedNames = Array.from(channels.keys()).sort((a, b) =>
-    a.localeCompare(b, 'zh-CN')
-  );
-
   // ================= 输出 =================
-  const header = [
+  const m3u = [
     '#EXTM3U',
     `# Generated at ${beijingTime()}`,
-    `# Channels: ${sortedNames.length}`,
     ''
   ];
-
-  const m3u = [...header];
   const apiTxt = [];
 
-  for (const name of sortedNames) {
-    const { urls, sources } = channels.get(name);
+  for (const [group, channels] of groups) {
+    const names = Array.from(channels.keys()).sort((a, b) =>
+      a.localeCompare(b, 'zh-CN')
+    );
 
-    // 来源注释（不影响播放器）
-    m3u.push(`# ---- ${name} | sources: ${Array.from(sources).length} ----`);
-
-    for (const url of urls) {
-      m3u.push(`#EXTINF:-1,${name}`);
-      m3u.push(url);
-      apiTxt.push(`${name},${url}`);
+    for (const name of names) {
+      const { urls } = channels.get(name);
+      for (const url of urls) {
+        m3u.push(`#EXTINF:-1 group-title="${group}",${name}`);
+        m3u.push(url);
+        apiTxt.push(`${name},${url}`);
+      }
     }
   }
 
-  // ================= 写文件 =================
-  fs.writeFileSync(RAW_OUTPUT, m3u.slice(1).join('\n') + '\n', 'utf-8');
   fs.writeFileSync(M3U_OUTPUT, m3u.join('\n') + '\n', 'utf-8');
   fs.writeFileSync(API_OUTPUT, apiTxt.join('\n') + '\n', 'utf-8');
 
-  console.log('\nSuccess!');
-  console.log(`Channels: ${sortedNames.length}`);
-  console.log(`Total URLs: ${apiTxt.length}`);
-  console.log(`→ ${M3U_OUTPUT}`);
-  console.log(`→ ${API_OUTPUT}`);
+  console.log('Done.');
 })();
