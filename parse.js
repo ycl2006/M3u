@@ -1,72 +1,134 @@
 const fs = require('fs');
-const path = require('path');
+const https = require('https');
+const http = require('http');
+const { URL } = require('url');
 
-// 可配置参数（方便以后调整）
-const INPUT_FILE = 'raw_interface.txt';
+// ===== 配置 =====
+const CONF_FILE = 'upstream.conf';
 const M3U_OUTPUT = 'cleaned_interface.m3u';
 const API_OUTPUT = 'api.txt';
 
-// 读取上游文件
-let text;
-try {
-  text = fs.readFileSync(INPUT_FILE, 'utf-8');
-} catch (err) {
-  console.error(`Error: Cannot read ${INPUT_FILE} - ${err.message}`);
-  process.exit(1);
+// ===== 下载函数 =====
+function fetchUrl(url) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const lib = u.protocol === 'https:' ? https : http;
+
+    const req = lib.get(
+      url,
+      { timeout: 15000 },
+      res => {
+        if (res.statusCode !== 200) {
+          reject(new Error(`HTTP ${res.statusCode}`));
+          res.resume();
+          return;
+        }
+
+        let data = '';
+        res.setEncoding('utf8');
+        res.on('data', chunk => (data += chunk));
+        res.on('end', () => resolve(data));
+      }
+    );
+
+    req.on('error', reject);
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Timeout'));
+    });
+  });
 }
 
-const lines = text.split(/\r?\n/);
-
-const m3u = ['#EXTM3U'];
-const apiTxt = [];
-
-let currentName = '';
-let entryCount = 0;
-let skipped = 0;
-
-for (let line of lines) {
-  line = line.trim();
-  if (!line) continue;
-
-  // 频道信息行
-  if (line.startsWith('#EXTINF')) {
-    const commaIndex = line.lastIndexOf(',');
-    currentName = commaIndex !== -1 ? line.slice(commaIndex + 1).trim() : '';
-    // 可选：清理频道名中的非法字符或多余空格
-    // currentName = currentName.replace(/[<>:"\/\\|?*]/g, '_');
-    continue;
+// ===== 主逻辑 =====
+(async () => {
+  if (!fs.existsSync(CONF_FILE)) {
+    console.error(`Error: ${CONF_FILE} not found`);
+    process.exit(1);
   }
 
-  // 播放地址行（http/https 开头）
-  if ((line.startsWith('http://') || line.startsWith('https://')) && currentName) {
-    // M3U 格式（标准简单写法）
-    m3u.push(`#EXTINF:-1,${currentName}`);
-    m3u.push(line);
+  const upstreams = fs
+    .readFileSync(CONF_FILE, 'utf-8')
+    .split('\n')
+    .map(l => l.replace(/#.*/, '').trim())
+    .filter(Boolean);
 
-    // API 格式（频道名,URL）
-    apiTxt.push(`${currentName},${line}`);
-
-    entryCount++;
-    currentName = ''; // 重置，避免跨行错误
-  } else if (line.startsWith('http') && !currentName) {
-    // 记录孤立 URL（没有匹配到频道名）
-    skipped++;
-    console.warn(`[WARN] Skipped orphan URL: ${line}`);
+  if (upstreams.length === 0) {
+    console.error('No upstream URLs');
+    process.exit(1);
   }
-}
 
-// 写入文件
-try {
+  console.log(`Loaded ${upstreams.length} upstream URLs`);
+
+  // 用于去重：channelName + url
+  const seen = new Set();
+
+  const m3u = ['#EXTM3U'];
+  const apiTxt = [];
+
+  let entryCount = 0;
+  let skipped = 0;
+
+  for (const upstream of upstreams) {
+    console.log(`Fetching: ${upstream}`);
+
+    let text;
+    try {
+      text = await fetchUrl(upstream);
+    } catch (e) {
+      console.warn(`  ✖ failed: ${e.message}`);
+      continue;
+    }
+
+    const lines = text.split(/\r?\n/);
+    let currentName = '';
+
+    for (let line of lines) {
+      line = line.trim();
+      if (!line) continue;
+
+      if (line.startsWith('#EXTINF')) {
+        const commaIndex = line.lastIndexOf(',');
+        currentName =
+          commaIndex !== -1 ? line.slice(commaIndex + 1).trim() : '';
+        continue;
+      }
+
+      if (
+        (line.startsWith('http://') || line.startsWith('https://')) &&
+        currentName
+      ) {
+        const key = `${currentName}|${line}`;
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+
+        m3u.push(`#EXTINF:-1,${currentName}`);
+        m3u.push(line);
+        apiTxt.push(`${currentName},${line}`);
+
+        entryCount++;
+        currentName = '';
+      } else if (line.startsWith('http') && !currentName) {
+        skipped++;
+      }
+    }
+  }
+
+  if (entryCount === 0) {
+    console.error('No valid entries generated');
+    process.exit(1);
+  }
+
   fs.writeFileSync(M3U_OUTPUT, m3u.join('\n') + '\n', 'utf-8');
   fs.writeFileSync(API_OUTPUT, apiTxt.join('\n') + '\n', 'utf-8');
 
-  console.log(`Success! Generated ${entryCount} entries`);
-  console.log(`  → ${M3U_OUTPUT} (${m3u.length - 1} lines)`);
-  console.log(`  → ${API_OUTPUT} (${apiTxt.length} lines)`);
+  console.log(`\nSuccess!`);
+  console.log(`  Entries: ${entryCount}`);
+  console.log(`  Unique pairs: ${seen.size}`);
+  console.log(`  → ${M3U_OUTPUT}`);
+  console.log(`  → ${API_OUTPUT}`);
   if (skipped > 0) {
-    console.warn(`Skipped ${skipped} orphan URLs (no matching #EXTINF)`);
+    console.warn(`  Skipped orphan URLs: ${skipped}`);
   }
-} catch (err) {
-  console.error(`Error writing output files: ${err.message}`);
-  process.exit(1);
-}
+})();
