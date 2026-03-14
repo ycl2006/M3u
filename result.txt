@@ -1,4 +1,4 @@
-# Generated at 2026-03-14 06:52:53 (Asia/Shanghai)
+# Generated at 2026-03-14 18:54:29 (Asia/Shanghai)
 
 🕘️更新时间,#genre#
 2026-03-06 21:24:40,http://74.91.26.218:82/live/cctv1hd.m3u8
@@ -1911,7 +1911,7 @@ CCTV-15,http://[2409:8087:1a0a:df::404b]/ottrrs.hl.chinamobile.com/TVOD/88888888
 射雕英雄传,https://live.ottiptv.cc/huya/23824164
 
 其他,#genre#
-更新日期: 2026-3-13 19:16:44,http://play.kankanlive.com/live/1698234869325962.m3u8
+更新日期: 2026-3-14 09:16:58,http://play.kankanlive.com/live/1698234869325962.m3u8
 CCTV1综合,http://play.kankanlive.com/live/1698234869325962.m3u8
 CCTV2财经,http://pull-hls-f11.douyincdn.com/media/stream-118899562654991020.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1773806307&major_anchor_level=common&sign=26df1db545d069eb52f37cc9e31f4d3c&t_id=037-2026031111582683916CAD1DF66CD09662-UtkRAa
 CCTV3综艺,http://38.75.136.137:98/gslb/dsdqpub/cctv3hd.m3u8?auth=testpub
