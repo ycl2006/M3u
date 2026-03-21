@@ -30,7 +30,7 @@ jobs:
             npm ci || npm install
           fi
 
-      # ===== 核心：只跑 parse.js =====
+      # ===== 核心：跑 parse.js =====
       - name: Generate IPTV result
         run: |
           node parse.js
@@ -41,11 +41,37 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add result.m3u result.txt
+          # 如果文件不存在，防止 git add 报错
+          [ -f result.m3u ] && git add result.m3u
+          [ -f result.txt ] && git add result.txt
 
-          git diff --cached --quiet || {
-            git commit -m "chore: update IPTV sources ($(date -u '+%Y-%m-%d %H:%M UTC'))"
+          if git diff --cached --quiet; then
+            echo "No changes in IPTV sources."
+          else
+            git commit -m "chore: update IPTV sources ($(date +'%Y-%m-%d %H:%M'))"
             git push
-          }
+          fi
+
+  cleanup:
+    runs-on: ubuntu-latest
+    needs: update  # 核心修复：这里必须对应上面的 job ID "update"
+    if: always()   # 确保即便 update 失败也执行清理
+    permissions:
+      actions: write
+    steps:
+      - name: Delete old runs
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # 提取 ID 列表（跳过最新的 5 条），使用原始输出规避科学计数法
+          run_ids=$(gh run list -R ${{ github.repository }} --limit 50 --json databaseId --jq '.[5:] | .[].databaseId')
+
+          if [ -n "$run_ids" ]; then
+            echo "发现旧记录，开始清理..."
+            for id in $run_ids; do
+              gh run delete -R ${{ github.repository }} "$id"
+            done
+            echo "清理完成。"
+          else
+            echo "当前记录少于 5 条，无需清理。"
+          fi
