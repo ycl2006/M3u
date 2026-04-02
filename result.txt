@@ -1,4 +1,4 @@
-# Generated at 2026-04-02 07:05:38 (Asia/Shanghai)
+# Generated at 2026-04-02 19:24:41 (Asia/Shanghai)
 
 🕘️更新时间,#genre#
 2026-04-01 12:03:18,https://iptv.catvod.com/live.php?id=CCTV1&line=4
@@ -1915,9 +1915,8 @@ CCTV-15,http://[2409:8087:1a0a:df::404b]/ottrrs.hl.chinamobile.com/TVOD/88888888
 射雕英雄传,https://live.ottiptv.cc/huya/23824164
 
 其他,#genre#
-更新日期: 2026-4-1 20:40:05,http://play.kankanlive.com/live/1698234869325962.m3u8
+更新日期: 2026-4-2 09:03:47,http://play.kankanlive.com/live/1698234869325962.m3u8
 CCTV1综合,http://play.kankanlive.com/live/1698234869325962.m3u8
-CCTV6电影,http://pull-hls-f11.douyincdn.com/media/stream-695580946287821484.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775650732&major_anchor_level=common&sign=cf57f676f2c5691a3565f84e57bc290e&t_id=037-2026040120185124F4C5C6035EB1B97F01-SHzUTy
 CCTV13新闻,http://pull-hls-f11.douyincdn.com/media/stream-695579599148417708.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775651827&major_anchor_level=common&sign=25aa61acbb8c946b2ee9ebd23cb4f905&t_id=037-202604012037061F5AB8029BCE7A81E5C7-0wCcv3
 CCTV13新闻,http://pull-hls-f11.douyincdn.com/media/stream-695522156380160684.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775651891&major_anchor_level=common&sign=0b8a1223954171ad2937d560903e2cc1&t_id=037-20260401203810D6AE37758BBB927B4BD7-LlJcoa
 CCTV13新闻,http://pull-hls-f11.douyincdn.com/media/stream-695553383939179180.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775651921&major_anchor_level=common&sign=0f3e5eb58649c980acb45c230fbd212e&t_id=037-20260401203840F95EAF06830CA99FC12D-5ue7Hg
@@ -1959,6 +1958,9 @@ CCTV16奥林匹克,http://38.75.136.137:98/gslb/dsdqpub/cctv16hd.m3u8?auth=testp
 上虞文化影视,http://l.cztvcloud.com/channels/lantian/SXshangyu2/720p.m3u8
 庆元电视台,http://l.cztvcloud.com/channels/lantian/SXqingyuan1/720p.m3u8
 龙泉电视台,http://l.cztvcloud.com/channels/lantian/SXlongquan1/720p.m3u8
+南京文旅纪录,http://nklive.nbs.cn/hls/9b2005c4-046c-422f-ba45-e6adc4f4de07/index.m3u8
+南京十八生活,http://nklive.nbs.cn/hls/1173a815-bfdb-4c3c-9f73-89ec37ae7716/index.m3u8
+宜兴新闻综合,http://yixing-tv-ori-hls.jstv.com/yixing-tv-ori/yixing_xw.m3u8
 哈尔滨生活,https://stream.hrbtv.net/shpd/sd/live.m3u8
 哈尔滨生活,http://stream.hrbtv.net/shpd/sd/live.m3u8
 哈尔滨资讯,https://stream.hrbtv.net/zxpd/sd/live.m3u8
@@ -2122,7 +2124,6 @@ CCTV16奥林匹克,http://38.75.136.137:98/gslb/dsdqpub/cctv16hd.m3u8?auth=testp
 通渭电视台,http://play.kankanlive.com/live/1661761962676984.flv
 秦安电视台,https://play.kankanlive.com/live/1680577080200944.m3u8
 秦安电视台,http://play.kankanlive.com/live/1680577080200944.flv
-CCTV6超清,http://pull-hls-f11.douyincdn.com/media/stream-695580946287821484.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775650732&major_anchor_level=common&sign=cf57f676f2c5691a3565f84e57bc290e&t_id=037-2026040120185124F4C5C6035EB1B97F01-SHzUTy
 CCTV6超清,http://pull-hls-f11.douyincdn.com/media/stream-695550183385334444.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775212079&major_anchor_level=common&sign=df934e7ccd289742a9dcd9e796a21e73&t_id=037-20260327182759E3D672881FBE8BC84271-smZh1q
 CCTV13超清,http://pull-hls-f11.douyincdn.com/media/stream-695579599148417708.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775651827&major_anchor_level=common&sign=25aa61acbb8c946b2ee9ebd23cb4f905&t_id=037-202604012037061F5AB8029BCE7A81E5C7-0wCcv3
 CCTV13超清,http://pull-hls-f11.douyincdn.com/media/stream-695522156380160684.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775651891&major_anchor_level=common&sign=0b8a1223954171ad2937d560903e2cc1&t_id=037-20260401203810D6AE37758BBB927B4BD7-LlJcoa
