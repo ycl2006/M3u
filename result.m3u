@@ -1,5 +1,5 @@
 #EXTM3U
-# Generated at 2026-04-04 07:01:26 (Asia/Shanghai)
+# Generated at 2026-04-04 19:00:04 (Asia/Shanghai)
 
 #EXTINF:-1 group-title="🕘️更新时间",2026-04-01 12:03:18
 https://iptv.catvod.com/live.php?id=CCTV1&line=4
@@ -3005,14 +3005,11 @@ https://live.metshop.top/huya/23824164
 http://cdn.jdshipin.com:8880/huya.php?id=23824164
 https://live.ottiptv.cc/huya/23824164
 
-#EXTINF:-1 group-title="其他",更新日期: 2026-4-3 18:34:12
+#EXTINF:-1 group-title="其他",更新日期: 2026-4-4 08:38:45
 http://play.kankanlive.com/live/1698234869325962.m3u8
 
 #EXTINF:-1 group-title="其他",CCTV1综合
 http://play.kankanlive.com/live/1698234869325962.m3u8
-
-#EXTINF:-1 group-title="其他",CCTV6电影
-http://pull-hls-f11.douyincdn.com/media/stream-695587329821377196.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775812129&major_anchor_level=common&sign=e35cee45305242ce14c155c9908cac68&t_id=037-2026040317084888CD726900AC3C8990DB-Wef3rj
 
 #EXTINF:-1 group-title="其他",CCTV13新闻
 http://pull-hls-f11.douyincdn.com/media/stream-695553383939179180.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775812647&major_anchor_level=common&sign=a16a13163e5a1bb150e2fdd5448bc59d&t_id=037-2026040317172716CCE7A11D64BD3CD9C0-IOLuIy
@@ -3495,7 +3492,6 @@ https://play.kankanlive.com/live/1680577080200944.m3u8
 http://play.kankanlive.com/live/1680577080200944.flv
 
 #EXTINF:-1 group-title="其他",CCTV6超清
-http://pull-hls-f11.douyincdn.com/media/stream-695587329821377196.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775812129&major_anchor_level=common&sign=e35cee45305242ce14c155c9908cac68&t_id=037-2026040317084888CD726900AC3C8990DB-Wef3rj
 http://pull-hls-f11.douyincdn.com/media/stream-695550183385334444.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775212079&major_anchor_level=common&sign=df934e7ccd289742a9dcd9e796a21e73&t_id=037-20260327182759E3D672881FBE8BC84271-smZh1q
 
 #EXTINF:-1 group-title="其他",CCTV13超清
