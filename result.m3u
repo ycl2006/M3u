@@ -1,5 +1,5 @@
 #EXTM3U
-# Generated at 2026-04-09 19:31:04 (Asia/Shanghai)
+# Generated at 2026-04-10 07:09:43 (Asia/Shanghai)
 
 #EXTINF:-1 group-title="🕘️更新时间",2026-04-01 12:03:18
 https://iptv.catvod.com/live.php?id=CCTV1&line=4
@@ -3005,7 +3005,7 @@ https://live.metshop.top/huya/23824164
 http://cdn.jdshipin.com:8880/huya.php?id=23824164
 https://live.ottiptv.cc/huya/23824164
 
-#EXTINF:-1 group-title="其他",更新日期: 2026-4-8 09:12:25
+#EXTINF:-1 group-title="其他",更新日期: 2026-4-9 18:18:07
 http://play.kankanlive.com/live/1698234869325962.m3u8
 
 #EXTINF:-1 group-title="其他",CCTV1综合
@@ -3132,6 +3132,9 @@ http://nklive.nbs.cn/hls/9b2005c4-046c-422f-ba45-e6adc4f4de07/index.m3u8
 
 #EXTINF:-1 group-title="其他",南京十八生活
 http://nklive.nbs.cn/hls/1173a815-bfdb-4c3c-9f73-89ec37ae7716/index.m3u8
+
+#EXTINF:-1 group-title="其他",宜兴新闻综合
+http://yixing-tv-ori-hls.jstv.com/yixing-tv-ori/yixing_xw.m3u8
 
 #EXTINF:-1 group-title="其他",哈尔滨生活
 https://stream.hrbtv.net/shpd/sd/live.m3u8
