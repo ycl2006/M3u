@@ -1,5 +1,5 @@
 #EXTM3U
-# Generated at 2026-04-10 19:25:40 (Asia/Shanghai)
+# Generated at 2026-04-11 07:03:48 (Asia/Shanghai)
 
 #EXTINF:-1 group-title="🕘️更新时间",2026-04-01 12:03:18
 https://iptv.catvod.com/live.php?id=CCTV1&line=4
@@ -3005,7 +3005,7 @@ https://live.metshop.top/huya/23824164
 http://cdn.jdshipin.com:8880/huya.php?id=23824164
 https://live.ottiptv.cc/huya/23824164
 
-#EXTINF:-1 group-title="其他",更新日期: 2026-4-10 18:27:25
+#EXTINF:-1 group-title="其他",更新日期: 2026-4-11 06:14:41
 http://play.kankanlive.com/live/1698234869325962.m3u8
 
 #EXTINF:-1 group-title="其他",CCTV1综合
@@ -3018,9 +3018,6 @@ http://pull-hls-f11.douyincdn.com/media/stream-695553383939179180.m3u8?arch_hrch
 #EXTINF:-1 group-title="其他",CCTV16奥林匹克
 http://69.30.246.194/live/cctv16.m3u8
 http://38.75.136.137:98/gslb/dsdqpub/cctv16hd.m3u8?auth=testpub
-
-#EXTINF:-1 group-title="其他",CCTV17农业农村
-http://pull-hls-f11.douyincdn.com/media/stream-695628960938590892.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776388385&major_anchor_level=common&sign=9148eda0c1121380f7266ebe2881a929&t_id=037-202604100913042E921560E43595D1D2E1-ycYyLY
 
 #EXTINF:-1 group-title="其他",兵团卫视
 https://hlsbkmgsplive.miguvideo.com/migu/kailu/btws/51/20250804/01.m3u8?&HlsSubType=&encrypt=
@@ -3129,9 +3126,6 @@ http://l.cztvcloud.com/channels/lantian/SXqingyuan1/720p.m3u8
 
 #EXTINF:-1 group-title="其他",龙泉电视台
 http://l.cztvcloud.com/channels/lantian/SXlongquan1/720p.m3u8
-
-#EXTINF:-1 group-title="其他",镇江2
-http://zjtv-wshls.homecdn.com/live/2aa16.m3u8
 
 #EXTINF:-1 group-title="其他",宜兴新闻综合
 http://yixing-tv-ori-hls.jstv.com/yixing-tv-ori/yixing_xw.m3u8
@@ -3514,9 +3508,6 @@ http://pull-hls-f11.douyincdn.com/media/stream-695553383939179180.m3u8?arch_hrch
 #EXTINF:-1 group-title="其他",CCTV16超清
 http://69.30.246.194/live/cctv16.m3u8
 http://38.75.136.137:98/gslb/dsdqpub/cctv16hd.m3u8?auth=testpub
-
-#EXTINF:-1 group-title="其他",CCTV17超清
-http://pull-hls-f11.douyincdn.com/media/stream-695628960938590892.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776388385&major_anchor_level=common&sign=9148eda0c1121380f7266ebe2881a929&t_id=037-202604100913042E921560E43595D1D2E1-ycYyLY
 
 #EXTINF:-1 group-title="其他",湖南卫视超清
 http://hlsal-ldvt.qing.mgtv.com/nn_live/nn_x64/Y2RuZXhfaWQ9YWxfaGxzX2xkdnQmZT02OTE0NjA0JnY9MSZpZD1ITldTWkdTVCZzPTcwN2RiYTc2YzJjNmJmMTQ4MmUyZGYzOWU2NWM3YWFi/HNWSZGST.m3u8
