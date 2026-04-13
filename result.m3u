@@ -1,5 +1,5 @@
 #EXTM3U
-# Generated at 2026-04-13 19:50:39 (Asia/Shanghai)
+# Generated at 2026-04-14 07:10:37 (Asia/Shanghai)
 
 #EXTINF:-1 group-title="🕘️更新时间",2026-04-01 12:03:18
 https://iptv.catvod.com/live.php?id=CCTV1&line=4
@@ -3005,7 +3005,7 @@ https://live.metshop.top/huya/23824164
 http://cdn.jdshipin.com:8880/huya.php?id=23824164
 https://live.ottiptv.cc/huya/23824164
 
-#EXTINF:-1 group-title="其他",更新日期: 2026-4-13 18:36:08
+#EXTINF:-1 group-title="其他",更新日期: 2026-4-14 06:13:35
 http://play.kankanlive.com/live/1698234869325962.m3u8
 
 #EXTINF:-1 group-title="其他",CCTV1综合
@@ -3014,6 +3014,7 @@ http://play.kankanlive.com/live/1698234869325962.m3u8
 #EXTINF:-1 group-title="其他",CCTV13新闻
 http://pull-hls-f11.douyincdn.com/media/stream-695633213632807596.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776420045&major_anchor_level=common&sign=312791ac58700a363d025c0a94c1bbd0&t_id=037-2026041018004416AA7E707B88F1063B85-Nh2VkU
 http://pull-hls-f11.douyincdn.com/media/stream-695587197212689068.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776484602&major_anchor_level=common&sign=a5a34bdff07cfb060a010c0b632ce79b&t_id=037-202604111156410DCF4EC4BFF47B6D364C-f47Nti
+http://pull-hls-f11.douyincdn.com/media/stream-695651341408928428.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776694865&major_anchor_level=common&sign=b4eb8da6e3f5ce18d3fc3a3644a4f296&t_id=037-202604132221050DE10D71B5AE1F13452B-RbdRaV
 
 #EXTINF:-1 group-title="其他",CCTV16奥林匹克
 http://69.30.246.194/live/cctv16.m3u8
@@ -3127,8 +3128,8 @@ http://l.cztvcloud.com/channels/lantian/SXqingyuan1/720p.m3u8
 #EXTINF:-1 group-title="其他",龙泉电视台
 http://l.cztvcloud.com/channels/lantian/SXlongquan1/720p.m3u8
 
-#EXTINF:-1 group-title="其他",镇江2
-http://zjtv-wshls.homecdn.com/live/2aa16.m3u8
+#EXTINF:-1 group-title="其他",宜兴新闻综合
+http://yixing-tv-ori-hls.jstv.com/yixing-tv-ori/yixing_xw.m3u8
 
 #EXTINF:-1 group-title="其他",哈尔滨生活
 https://stream.hrbtv.net/shpd/sd/live.m3u8
@@ -3500,6 +3501,7 @@ http://pull-hls-f11.douyincdn.com/media/stream-695550183385334444.m3u8?arch_hrch
 
 #EXTINF:-1 group-title="其他",CCTV13超清
 http://pull-hls-f11.douyincdn.com/media/stream-695587197212689068.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776484602&major_anchor_level=common&sign=a5a34bdff07cfb060a010c0b632ce79b&t_id=037-202604111156410DCF4EC4BFF47B6D364C-f47Nti
+http://pull-hls-f11.douyincdn.com/media/stream-695651341408928428.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776694865&major_anchor_level=common&sign=b4eb8da6e3f5ce18d3fc3a3644a4f296&t_id=037-202604132221050DE10D71B5AE1F13452B-RbdRaV
 
 #EXTINF:-1 group-title="其他",CCTV16超清
 http://69.30.246.194/live/cctv16.m3u8
