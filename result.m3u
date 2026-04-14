@@ -1,5 +1,5 @@
 #EXTM3U
-# Generated at 2026-04-14 19:37:14 (Asia/Shanghai)
+# Generated at 2026-04-15 07:12:26 (Asia/Shanghai)
 
 #EXTINF:-1 group-title="🕘️更新时间",2026-04-01 12:03:18
 https://iptv.catvod.com/live.php?id=CCTV1&line=4
@@ -501,6 +501,7 @@ https://hls-gateway.vpstv.net/streams/708873.m3u8
 https://stream1.freetv.fun/yan-dong-xin-wen-27.ctv
 https://stream1.freetv.fun/yan-dong-xin-wen-20.m3u8
 https://stream1.freetv.fun/yan-dong-xin-wen-2.m3u8
+http://38.75.136.137:98/gslb/dsdqpub/gdxw.m3u8?auth=testpub
 
 #EXTINF:-1 group-title="☘️广东频道",广东卫视
 http://iptv.huuc.edu.cn/hls/gdhd.m3u8
@@ -515,6 +516,7 @@ https://stream1.freetv.fun/yan-dong-min-sheng-9.ctv
 https://stream1.freetv.fun/yan-dong-min-sheng-35.ctv
 https://stream1.freetv.fun/yan-dong-min-sheng-16.ctv
 https://stream1.freetv.fun/yan-dong-min-sheng-21.ctv
+http://38.75.136.137:98/gslb/dsdqpub/gdgg.m3u8?auth=testpub
 
 #EXTINF:-1 group-title="☘️广东频道",大湾区卫视
 https://iptv.catvod.com/live.php?id=%E5%A4%A7%E6%B9%BE%E5%8C%BA%E5%8D%AB%E8%A7%86&line=1
@@ -3005,10 +3007,11 @@ https://live.metshop.top/huya/23824164
 http://cdn.jdshipin.com:8880/huya.php?id=23824164
 https://live.ottiptv.cc/huya/23824164
 
-#EXTINF:-1 group-title="其他",更新日期: 2026-4-14 12:05:34
-http://play.kankanlive.com/live/1698234869325962.m3u8
+#EXTINF:-1 group-title="其他",更新日期: 2026-4-15 06:20:52
+http://pull-hls-f11.douyincdn.com/media/stream-695658638221771436.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776809929&major_anchor_level=common&sign=be8c2e1824dfaf0b14a61456a228a8f3&t_id=037-20260415061848874B3290EC176C29A97C-kzQw2D
 
 #EXTINF:-1 group-title="其他",CCTV1综合
+http://pull-hls-f11.douyincdn.com/media/stream-695658638221771436.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776809929&major_anchor_level=common&sign=be8c2e1824dfaf0b14a61456a228a8f3&t_id=037-20260415061848874B3290EC176C29A97C-kzQw2D
 http://play.kankanlive.com/live/1698234869325962.m3u8
 
 #EXTINF:-1 group-title="其他",CCTV13新闻
@@ -3493,8 +3496,8 @@ http://play.kankanlive.com/live/1661761962676984.flv
 https://play.kankanlive.com/live/1680577080200944.m3u8
 http://play.kankanlive.com/live/1680577080200944.flv
 
-#EXTINF:-1 group-title="其他",CCTV6超清
-http://pull-hls-f11.douyincdn.com/media/stream-695550183385334444.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1775212079&major_anchor_level=common&sign=df934e7ccd289742a9dcd9e796a21e73&t_id=037-20260327182759E3D672881FBE8BC84271-smZh1q
+#EXTINF:-1 group-title="其他",CCTV1超清
+http://pull-hls-f11.douyincdn.com/media/stream-695658638221771436.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776809929&major_anchor_level=common&sign=be8c2e1824dfaf0b14a61456a228a8f3&t_id=037-20260415061848874B3290EC176C29A97C-kzQw2D
 
 #EXTINF:-1 group-title="其他",CCTV13超清
 http://pull-hls-f11.douyincdn.com/media/stream-695587197212689068.m3u8?arch_hrchy=w1&exp_hrchy=w1&expire=1776484602&major_anchor_level=common&sign=a5a34bdff07cfb060a010c0b632ce79b&t_id=037-202604111156410DCF4EC4BFF47B6D364C-f47Nti
@@ -3502,6 +3505,7 @@ http://pull-hls-f11.douyincdn.com/media/stream-695651341408928428.m3u8?arch_hrch
 
 #EXTINF:-1 group-title="其他",CCTV16超清
 http://69.30.246.194/live/cctv16.m3u8
+http://38.75.136.137:98/gslb/dsdqpub/cctv16hd.m3u8?auth=testpub
 
 #EXTINF:-1 group-title="其他",湖南卫视超清
 http://hlsal-ldvt.qing.mgtv.com/nn_live/nn_x64/Y2RuZXhfaWQ9YWxfaGxzX2xkdnQmZT02OTE0NjA0JnY9MSZpZD1ITldTWkdTVCZzPTcwN2RiYTc2YzJjNmJmMTQ4MmUyZGYzOWU2NWM3YWFi/HNWSZGST.m3u8
